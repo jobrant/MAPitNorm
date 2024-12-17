@@ -1,24 +1,20 @@
 # File: R/normalize_coverage.R
 
-#' Normalize Coverage Data
-#'
-#' Normalizes methylation coverage data across replicates and groups by scaling
-#' coverage values to the mean total coverage across all samples.
+#' Normalizes methylation coverage data within groups (replicates) and optionally between groups.
 #'
 #' @param data_list A list of lists containing methylation data frames. Each inner list
 #'        represents a group and contains one or more replicate data frames.
 #' @param group_names A character vector of group names.
+#' @param between_groups Logical indicating whether to normalize between groups.
+#'        Default is FALSE to preserve biological differences between groups.
+#'
+#' @details When between_groups = FALSE, each group is normalized independently,
+#'          preserving potential biological differences in total accessibility between groups.
+#'          When between_groups = TRUE, all samples are normalized to the same mean coverage,
+#'          which might mask global accessibility changes between conditions.
 #'
 #' @return A list of lists with the same structure as the input, containing normalized
 #'         coverage data.
-#'
-#' @details Each data frame in the input list should contain columns:
-#'          \itemize{
-#'            \item cov: coverage values
-#'            \item mc: methylation counts
-#'          }
-#'          The function calculates scaling factors based on total coverage and
-#'          normalizes both coverage and methylation counts accordingly.
 #'
 #' @examples
 #' \dontrun{
@@ -28,7 +24,7 @@
 #' @import data.table
 #' @export
 
-normalize_coverage <- function(data_list, group_names) {
+normalize_coverage <- function(data_list, group_names, between_groups = FALSE) {
   # Input validation
   if (!is.list(data_list)) stop("data_list must be a list")
   if (!all(sapply(data_list, is.list))) stop("data_list must be a list of lists")
@@ -37,23 +33,44 @@ normalize_coverage <- function(data_list, group_names) {
     stop("All data frames must contain 'cov' and 'mc' columns")
   }
 
-  # Get all data frames in a flat list
-  all_dfs <- unlist(data_list, recursive = FALSE)
+  # Create a named vector to store scaling factors
+  sf_total <- numeric()
 
-  # Calculate scaling factors
-  totals <- sapply(all_dfs, function(df) sum(df$cov))
-  avg_total <- mean(totals)
-  sf_total <- totals / avg_total
+  if(between_groups) {
+    # Normalize across all samples
+    for(group in names(data_list)) {
+      for(sample_name in names(data_list[[group]])) {
+        sf_total[sample_name] <- sum(data_list[[group]][[sample_name]]$cov)
+      }
+    }
+    avg_total <- mean(sf_total)
+    sf_total <- sf_total / avg_total
 
+    print("Performing between-group normalization")
+  } else {
+    # Normalize within each group separately
+    for(group in names(data_list)) {
+      group_totals <- sapply(data_list[[group]], function(df) sum(df$cov))
+      group_mean <- mean(group_totals)
+      group_sf <- group_totals / group_mean
+      sf_total[names(data_list[[group]])] <- group_sf
+    }
+
+    print("Performing within-group normalization only")
+  }
+
+
+  # Print diagnostics
   print("Scaling factors:")
   print(sf_total)
 
   # Normalize each group
   normalized_groups <- lapply(names(data_list), function(group_name) {
     group_data <- data_list[[group_name]]
+
+    # Get scaling factors for this group using names
     group_sf <- sf_total[names(group_data)]
 
-    # Print diagnostics
     print(paste("Processing group:", group_name))
     print("Group scaling factors:")
     print(group_sf)
