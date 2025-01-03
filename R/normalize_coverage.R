@@ -1,12 +1,13 @@
-# File: R/normalize_coverage.R
-
 #' Normalizes methylation coverage data within groups (replicates) and optionally between groups.
 #'
 #' @param data_list A list of lists containing methylation data frames. Each inner list
-#'        represents a group and contains one or more replicate data frames.
-#' @param group_names A character vector of group names.
+#'        represents a group and contains one or more replicate data frames. Each data frame
+#'        must contain columns 'cov' and 'mc'.
+#' @param group_names A character vector of group names corresponding to the names in data_list.
 #' @param between_groups Logical indicating whether to normalize between groups.
 #'        Default is FALSE to preserve biological differences between groups.
+#' @param diagnostics Logical indicating whether to print diagnostic information.
+#'        Default is FALSE.
 #'
 #' @details When between_groups = FALSE, each group is normalized independently,
 #'          preserving potential biological differences in total accessibility between groups.
@@ -14,17 +15,23 @@
 #'          which might mask global accessibility changes between conditions.
 #'
 #' @return A list of lists with the same structure as the input, containing normalized
-#'         coverage data.
+#'         coverage data. Each data frame in the output will contain normalized versions
+#'         of 'cov' and 'mc' columns, plus a calculated 'rate' column (mc/cov).
 #'
 #' @examples
 #' \dontrun{
 #' split_data <- split_by_groups(gch_samples, group_names)
 #' normalized_coverage <- normalize_coverage(split_data, group_names)
 #' }
-#' @import data.table
+#' @importFrom data.table setDT copy := setDTthreads
+#' @importFrom purrr map2 transpose
+#' @importFrom parallel detectCores
+#'
 #' @export
 
-normalize_coverage <- function(data_list, group_names, between_groups = FALSE) {
+normalize_coverage <- function(data_list, group_names, between_groups = FALSE,  diagnostics = FALSE) {
+  data.table::setDTthreads(threads = parallel::detectCores())  # Optional: for better performance
+
   # Input validation
   if (!is.list(data_list)) stop("data_list must be a list")
   if (!all(sapply(data_list, is.list))) stop("data_list must be a list of lists")
@@ -59,7 +66,6 @@ normalize_coverage <- function(data_list, group_names, between_groups = FALSE) {
     print("Performing within-group normalization only")
   }
 
-
   # Print diagnostics
   print("Scaling factors:")
   print(sf_total)
@@ -75,9 +81,49 @@ normalize_coverage <- function(data_list, group_names, between_groups = FALSE) {
     print("Group scaling factors:")
     print(group_sf)
 
-    normalize_group(group_data, group_sf)
+    .normalize_group(group_data, group_sf)
   })
+
+  # Add diagnostic check
+  if(diagnostics) {
+    # Sample a few values before normalization
+    sample_before <- lapply(data_list, function(group) {
+      lapply(group, function(df) {
+        head(df$cov, 5)  # First 5 coverage values
+      })
+    })
+
+    # After normalization
+    sample_after <- lapply(normalized_groups, function(group) {
+      lapply(group, function(df) {
+        head(df$cov, 5)  # First 5 coverage values
+      })
+    })
+
+    cat("\nSample values before normalization:\n")
+    print(sample_before)
+    cat("\nSample values after normalization:\n")
+    print(sample_after)
+  }
 
   names(normalized_groups) <- names(data_list)
   return(normalized_groups)
+}
+
+#' Internal function to normalize a group of samples
+#' @param replicates List of replicate data frames
+#' @param sf Vector of scaling factors
+#' @return List of normalized data frames
+#' @keywords internal
+.normalize_group <- function(replicates, sf) {
+  purrr::map2(replicates, sf, function(df, s) {
+    if(is.na(s)) stop("Scaling factor is NA")
+    dt <- data.table::copy(df)
+    data.table::setDT(dt)
+    data.table::setDT(dt)[, c("cov", "mc", "rate") := list(cov/s,
+                                                           mc/s,
+                                                           mc/cov
+    )]
+    return(dt)
+  })
 }

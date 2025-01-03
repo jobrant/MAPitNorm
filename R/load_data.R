@@ -10,13 +10,10 @@
 #'
 #' @return A list containing GCH and HCG samples as data frames.
 #'
-#' @import dplyr
-#'
-#' @import purrr
-#'
+#' @importFrom purrr map
 #' @importFrom stringr str_sub
-#'
 #' @importFrom progress progress_bar
+#' @importFrom data.table fread
 #'
 #' @export
 #'
@@ -61,7 +58,7 @@ load_data <- function(dir_path) {
     pb$tick()  # Update progress bar
     df <- fread(file)
     colnames(df) <- c("chr", "pos", "strand", "site", "mc", "cov", "stat")
-    df <- df %>% select(chr, pos, strand, site, mc, cov)
+    df <- df[, .("chr", "pos", "strand", "site", "mc", "cov")]
     df$rate <- df$mc / df$cov
     df$uniqueID <- paste(df$chr, df$pos, df$site, sep = "_")
     return(df)

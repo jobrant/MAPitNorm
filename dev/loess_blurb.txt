@@ -1,0 +1,101 @@
+LOESS (Locally Estimated Scatterplot Smoothing) normalization could be an alternative approach that might handle the methylation rate normalization more smoothly than discrete quantiles. Here's how it works:
+
+1. Instead of breaking data into discrete bins (quantiles), LOESS:
+- Fits a smooth curve through the data points
+- Uses local weighted regression
+- Creates a continuous normalization factor that varies smoothly across methylation rates
+
+Here's a conceptual implementation:
+
+```R
+normalize_methylation_within_set <- function(sample_list, n_quantiles, method) {
+    if(method == "loess") {
+        # Calculate average rates across samples
+        avg_rates <- rowMeans(do.call(cbind, lapply(sample_list, function(df) df$rate)))
+        
+        # For each sample
+        result <- lapply(sample_list, function(df) {
+            dt <- data.table::copy(df)
+            
+            # Fit LOESS model
+            # x = average rates (reference)
+            # y = this sample's rates
+            loess_fit <- loess(dt$rate ~ avg_rates, 
+                             span = 0.2)  # span controls smoothing
+            
+            # Predict normalized values
+            normalized_rates <- predict(loess_fit)
+            
+            # Apply normalization
+            dt[, mc := cov * normalized_rates]
+            dt[, rate := normalized_rates]
+            
+            return(dt)
+        })
+        
+        return(result)
+    }
+    # ... rest of function for quantile method
+}
+```
+
+Advantages of LOESS:
+1. Smooth transitions between regions (no arbitrary bin boundaries)
+2. Potentially better handling of extreme values
+3. More flexible to different data distributions
+
+Visual comparison:
+```R
+library(ggplot2)
+
+# Create example plot
+plot_normalization_comparison <- function(sample_data) {
+    # Original rates
+    orig_rates <- sample_data$rate
+    
+    # Quantile normalization
+    quant_norm <- normalize_methylation_within_set(list(sample_data), 
+                                                 n_quantiles = 10, 
+                                                 method = "quantile")
+    
+    # LOESS normalization
+    loess_norm <- normalize_methylation_within_set(list(sample_data), 
+                                                 method = "loess")
+    
+    # Combine data for plotting
+    plot_data <- data.frame(
+        original = orig_rates,
+        quantile = quant_norm[[1]]$rate,
+        loess = loess_norm[[1]]$rate
+    )
+    
+    # Create plot
+    ggplot(plot_data) +
+        geom_point(aes(x = original, y = quantile, color = "Quantile")) +
+        geom_point(aes(x = original, y = loess, color = "LOESS")) +
+        geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+        labs(x = "Original Methylation Rate",
+             y = "Normalized Rate",
+             color = "Method") +
+        theme_minimal()
+}
+```
+
+Considerations for choosing between methods:
+1. Quantile normalization:
+   - More robust to outliers
+   - Easier to interpret
+   - Preserves rank order within bins
+   - More commonly used in the field
+
+2. LOESS normalization:
+   - Smoother transitions
+   - Might better capture biological reality
+   - More computationally intensive
+   - Could be more sensitive to outliers
+
+The choice might depend on:
+- Your biological expectations
+- The distribution of your data
+- Whether you expect sharp transitions or smooth gradients in methylation efficiency
+
