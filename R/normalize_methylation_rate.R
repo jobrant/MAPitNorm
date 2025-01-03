@@ -5,48 +5,73 @@
 #'
 #' @param data_list List of normalized coverage data
 #' @param group_names Character vector of group names
-#' @param alpha Numeric between 0 and 1 controlling structure preservation (default = 0.3)
-#' @param use_smoothing Logical indicating whether to apply smoothing (default = TRUE)
-#' @param min_quantiles Minimum number of quantiles to use (default = 5)
-#' @param sites_per_quantile Target number of sites per quantile (default = 20)
+#' @param within_groups Logical indicating whether to normalize within groups (default = TRUE)
+#' @param between_groups Logical indicating whether to normalize between groups (default = TRUE)
+#' @param within_alpha Numeric between 0 and 1 controlling structure preservation within groups (default = 0.3)
+#' @param between_alpha Numeric between 0 and 1 controlling structure preservation between groups (default = 0.5)
+#' @param sites_per_quantile Target number of sites per quantile (default = 1000).
+#'        For large datasets (>100k sites), this provides a good balance between
+#'        normalization granularity and statistical power.
 #' @param max_quantiles Maximum number of quantiles to use (default = 50)
-#' @param between_groups Logical indicating whether to normalize between groups
 #' @param diagnostics Logical indicating whether to print diagnostic information
 #'
-#' @details This function normalizes methylation rates within quantile bins to account
-#' for non-linear enzyme efficiency differences. When between_groups = FALSE, normalization
-#' is performed within each group separately to preserve biological differences between groups.
+#' @details This function performs a two-step normalization:
+#'          1. Within-group normalization to handle technical variation between replicates
+#'          2. Between-group normalization to adjust for global efficiency differences
+#'          while preserving biological differences. The higher between_alpha preserves
+#'          more of the biological differences between groups.
 #'
 #' @return List of lists containing normalized methylation data
 #'
 #' @importFrom data.table setDT copy :=
+#' @importFrom stats quantile
 #' @importFrom purrr map2
 #' @importFrom utils setTxtProgressBar txtProgressBar
 #'
 #' @export
 normalize_methylation_rates <- function(data_list,
                                         group_names,
-                                        alpha = 0.3,
-                                        use_smoothing = TRUE,
-                                        min_quantiles = 5,
-                                        sites_per_quantile = 20,
+                                        within_groups = TRUE,
+                                        between_groups = TRUE,
+                                        within_alpha = 0.3,
+                                        between_alpha = 0.5,
+                                        sites_per_quantile = 1000,
                                         max_quantiles = 50,
-                                        between_groups = FALSE,
                                         diagnostics = TRUE) {
 
   # Input validation
   if (!is.list(data_list)) stop("data_list must be a list")
   if (!all(sapply(data_list, is.list))) stop("data_list must be a list of lists")
 
+  result <- data_list
+
+  # Step 1: Within-group normalization
+  if(within_groups) {
+    if(diagnostics) cat("\n=== Performing within-group normalization ===\n")
+    result <- lapply(names(result), function(group) {
+      if(diagnostics) cat(sprintf("\nProcessing group: %s\n", group))
+      normalize_methylation_within_set(
+        result[[group]],
+        alpha = within_alpha,
+        sites_per_quantile = sites_per_quantile,
+        max_quantiles = max_quantiles,
+        diagnostics = diagnostics
+      )
+    })
+    names(result) <- names(data_list)
+  }
+
+  # Step 2: Between-group normalization
   if(between_groups) {
-    if(diagnostics) cat("Performing between-group normalization\n")
-    all_samples <- unlist(data_list, recursive = FALSE)
+    if(diagnostics) cat("\n=== Performing between-group normalization ===\n")
+    # Flatten data for between-group normalization
+    all_samples <- unlist(result, recursive = FALSE)
+
+    # Perform gentler between-group normalization
     normalized_data <- normalize_methylation_within_set(
       all_samples,
-      alpha = alpha,
-      use_smoothing = use_smoothing,
-      min_quantiles = min_quantiles,
-      sites_per_quantile = sites_per_quantile,
+      alpha = between_alpha,  # Higher alpha to preserve more group differences
+      sites_per_quantile = sites_per_quantile * 2,  # Fewer quantiles for between-group
       max_quantiles = max_quantiles,
       diagnostics = diagnostics
     )
@@ -59,19 +84,6 @@ normalize_methylation_rates <- function(data_list,
       result[[group]] <- normalized_data[current_idx:(current_idx + n_samples - 1)]
       current_idx <- current_idx + n_samples
     }
-  } else {
-    if(diagnostics) cat("Performing within-group normalization\n")
-    result <- lapply(data_list, function(group) {
-      normalize_methylation_within_set(
-        group,
-        alpha = alpha,
-        use_smoothing = use_smoothing,
-        min_quantiles = min_quantiles,
-        sites_per_quantile = sites_per_quantile,
-        max_quantiles = max_quantiles,
-        diagnostics = diagnostics
-      )
-    })
   }
 
   names(result) <- names(data_list)
@@ -82,19 +94,15 @@ normalize_methylation_rates <- function(data_list,
 #' Internal function to normalize methylation rates within a set of samples
 #' @param sample_list List of replicate data frames
 #' @param alpha Numeric between 0 and 1 controlling structure preservation (default = 0.3)
-#' @param use_smoothing Logical indicating whether to apply smoothing (default = TRUE)
-#' @param min_quantiles Minimum number of quantiles to use (default = 5)
-#' @param sites_per_quantile Target number of sites per quantile (default = 20)
+#' @param sites_per_quantile Target number of sites per quantile (default = 1000)
 #' @param max_quantiles Maximum number of quantiles to use (default = 50)
 #' @param diagnostics Logical indicating whether to print diagnostic information
-#' @importFrom stats ksmooth quantile
+#'
 #' @keywords internal
 
 normalize_methylation_within_set <- function(sample_list,
                                              alpha = 0.3,
-                                             use_smoothing = TRUE,
-                                             min_quantiles = 5,
-                                             sites_per_quantile = 20,
+                                             sites_per_quantile = 1000,
                                              max_quantiles = 50,
                                              diagnostics = TRUE) {
 
@@ -104,11 +112,10 @@ normalize_methylation_within_set <- function(sample_list,
 
   # Dynamic quantile calculation
   n_sites <- length(avg_rates)
-  n_quantiles <- as.integer(max(min_quantiles, min(n_sites/sites_per_quantile, max_quantiles)))
+  n_quantiles <- as.integer(max(5, min(n_sites/sites_per_quantile, max_quantiles)))
   if(diagnostics) cat(sprintf("Using %d quantiles for %d sites\n", n_quantiles, n_sites))
 
   # Create quantiles
-  if(diagnostics) cat("Creating quantile bins...\n")
   probs <- seq(0, 1, length.out = n_quantiles + 1)
   breaks <- unique(quantile(avg_rates, prob = probs, names = FALSE))
 
@@ -139,7 +146,7 @@ normalize_methylation_within_set <- function(sample_list,
       quant_rates <- sapply(result, function(df) mean(df$rate[sites_in_quantile]))
       avg_quant_rate <- mean(quant_rates)
 
-      # Apply hybrid normalization to each sample
+      # Calculate and apply scaling factors with structure preservation
       result <- map2(result, quant_rates, function(df, sample_rate) {
         dt <- data.table::copy(df)
         data.table::setDT(dt)
@@ -147,22 +154,9 @@ normalize_methylation_within_set <- function(sample_list,
         # Get current rates for these sites
         current_rates <- dt$rate[sites_in_quantile]
 
-        if(use_smoothing && length(sites_in_quantile) > 3) {  # Only smooth if enough points
-          # Apply smoothing with explicit output points
-          bw <- diff(range(sites_in_quantile))/n_quantiles
-          smoothed <- ksmooth(sites_in_quantile,
-                              current_rates,
-                              bandwidth = bw,
-                              x.points = sites_in_quantile)$y
-
-          # Combine smoothing with structure preservation
-          centered <- current_rates - smoothed
-          new_rates <- smoothed + alpha * centered
-        } else {
-          # Just preserve structure
-          centered <- current_rates - mean(current_rates)
-          new_rates <- avg_quant_rate + alpha * centered
-        }
+        # Preserve structure while normalizing to average
+        centered <- current_rates - mean(current_rates)
+        new_rates <- avg_quant_rate + alpha * centered
 
         # Update methylation counts and rates
         dt[sites_in_quantile, `:=`(

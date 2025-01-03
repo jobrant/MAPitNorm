@@ -7,9 +7,7 @@
 normalize_methylation_within_set(
   sample_list,
   alpha = 0.3,
-  use_smoothing = TRUE,
-  min_quantiles = 5,
-  sites_per_quantile = 20,
+  sites_per_quantile = 1000,
   max_quantiles = 50,
   diagnostics = TRUE
 )
@@ -19,11 +17,7 @@ normalize_methylation_within_set(
 
 \item{alpha}{Numeric between 0 and 1 controlling structure preservation (default = 0.3)}
 
-\item{use_smoothing}{Logical indicating whether to apply smoothing (default = TRUE)}
-
-\item{min_quantiles}{Minimum number of quantiles to use (default = 5)}
-
-\item{sites_per_quantile}{Target number of sites per quantile (default = 20)}
+\item{sites_per_quantile}{Target number of sites per quantile (default = 1000)}
 
 \item{max_quantiles}{Maximum number of quantiles to use (default = 50)}
 

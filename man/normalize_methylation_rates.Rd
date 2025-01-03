@@ -7,12 +7,12 @@
 normalize_methylation_rates(
   data_list,
   group_names,
-  alpha = 0.3,
-  use_smoothing = TRUE,
-  min_quantiles = 5,
-  sites_per_quantile = 20,
+  within_groups = TRUE,
+  between_groups = TRUE,
+  within_alpha = 0.3,
+  between_alpha = 0.5,
+  sites_per_quantile = 1000,
   max_quantiles = 50,
-  between_groups = FALSE,
   diagnostics = TRUE
 )
 }
@@ -21,17 +21,19 @@ normalize_methylation_rates(
 
 \item{group_names}{Character vector of group names}
 
-\item{alpha}{Numeric between 0 and 1 controlling structure preservation (default = 0.3)}
+\item{within_groups}{Logical indicating whether to normalize within groups (default = TRUE)}
 
-\item{use_smoothing}{Logical indicating whether to apply smoothing (default = TRUE)}
+\item{between_groups}{Logical indicating whether to normalize between groups (default = TRUE)}
 
-\item{min_quantiles}{Minimum number of quantiles to use (default = 5)}
+\item{within_alpha}{Numeric between 0 and 1 controlling structure preservation within groups (default = 0.3)}
 
-\item{sites_per_quantile}{Target number of sites per quantile (default = 20)}
+\item{between_alpha}{Numeric between 0 and 1 controlling structure preservation between groups (default = 0.5)}
+
+\item{sites_per_quantile}{Target number of sites per quantile (default = 1000).
+For large datasets (>100k sites), this provides a good balance between
+normalization granularity and statistical power.}
 
 \item{max_quantiles}{Maximum number of quantiles to use (default = 50)}
-
-\item{between_groups}{Logical indicating whether to normalize between groups}
 
 \item{diagnostics}{Logical indicating whether to print diagnostic information}
 }
@@ -43,7 +45,9 @@ Normalizes methylation rates using quantile-based normalization to account for
 non-linear enzyme efficiency differences.
 }
 \details{
-This function normalizes methylation rates within quantile bins to account
-for non-linear enzyme efficiency differences. When between_groups = FALSE, normalization
-is performed within each group separately to preserve biological differences between groups.
+This function performs a two-step normalization:
+         1. Within-group normalization to handle technical variation between replicates
+         2. Between-group normalization to adjust for global efficiency differences
+         while preserving biological differences. The higher between_alpha preserves
+         more of the biological differences between groups.
 }

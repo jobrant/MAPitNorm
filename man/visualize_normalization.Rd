@@ -6,32 +6,23 @@
 \usage{
 visualize_normalization(
   original_data,
-  coverage_normalized,
-  fully_normalized,
-  group_names,
-  n_quantiles = 10,
-  sample_size = 1e+05,
-  save_plot = FALSE,
-  output_dir = "."
+  within_norm,
+  full_norm,
+  output_file = NULL
 )
 }
 \arguments{
 \item{original_data}{Original data list before normalization}
 
-\item{coverage_normalized}{Data after coverage normalization}
+\item{within_norm}{Data after within-group normalization}
 
-\item{fully_normalized}{Data after both coverage and methylation rate normalization}
+\item{full_norm}{Data after both normalizations}
 
-\item{group_names}{Character vector of group names}
-
-\item{n_quantiles}{Number of quantiles for visualization (default = 10)}
-
-\item{sample_size}{Number of sites to sample for visualization (default = 100000)}
-
-\item{save_plot}{Logical indicating whether to save plots to file (default = FALSE)}
-
-\item{output_dir}{Directory to save plots (default = current directory)}
+\item{output_file}{Optional file path to save plots}
+}
+\value{
+A grid arrangement of four diagnostic plots
 }
 \description{
-Creates diagnostic plots to visualize the effects of both coverage and methylation rate normalization.
+Visualize Normalization Effects
 }
