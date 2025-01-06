@@ -1,71 +1,136 @@
-# File: R/load_data.R
-
 #' Load and Preprocess Data
 #'
-#' Load methylation data from files, preprocess, and split into GCH and
-#' HCG samples. Files are expected to be named groupName_replicateName_site.tsv
+#' Load methylation data from files and preprocess them.
+#' Files are expected to be named groupName_replicateName_site.tsv
 #' Site is either GCH or HCG.
 #'
 #' @param dir_path Path to the directory containing the data files.
+#' @param type Character string specifying which type of files to load.
+#' @param cores Number of cores to use for parallel processing. Default is 1
+#'   (no parallel processing).
 #'
-#' @return A list containing GCH and HCG samples as data frames.
+#' @return A list of data.tables containing processed methylation data.
 #'
-#' @importFrom purrr map
 #' @importFrom stringr str_sub
 #' @importFrom progress progress_bar
-#' @importFrom data.table fread
+#' @importFrom data.table fread setnames :=
+#' @importFrom parallel makeCluster stopCluster parLapply detectCores clusterExport
+#'
+#' @examples
+#' \dontrun{
+#' # Load GCH files sequentially
+#' gch_samples <- load_data("path/to/files", type = "GCH")
+#'
+#' # Load HCG files using parallel processing
+#' hcg_samples <- load_data("path/to/files", type = "HCG", cores = 4)
+#' }
 #'
 #' @export
 #'
 
-load_data <- function(dir_path) {
-  # List all TSV files in the directory
-  files.list <- list.files(path = dir_path, pattern = "tsv", full.names = T)
+load_data <- function(dir_path, type = c("GCH", "HCG"), cores = 1) {
+  # Match arg
+  type <- match.arg(type)
 
-  # Check if files.list is empty
+  # List only files of requested type
+  files.list <- list.files(
+    path = dir_path,
+    pattern = paste0(".*", type, ".*\\.tsv"),
+    full.names = T
+    )
+
+  # Validation step
   if(length(files.list) == 0) {
-    stop("No methylation call files found in the directory.")
+    stop(sprintf("No %s methylation call files found in the directory.", type))
+  }
+  if(length(files.list) < 2) {
+    stop(sprintf("At least two %s files are required for analysis.", type))
   }
 
-  # Filter based on file type
-  gch_files <- files.list[grepl("GCH", files.list)]
-  hcg_files <- files.list[grepl("HCG", files.list)]
+  # Name files
+  file.names <- basename(tools::file_path_sans_ext(files.list, compression = T))
+  names(files.list) <- file.names
 
-  # Count the number of GCH and HCG files
-  num_gch_files <- length(gch_files)
-  num_hcg_files <- length(hcg_files)
+  message(sprintf("Loading %d %s files...", length(files.list), type))
 
-  # Print the file count information
-  message(paste("Number of GCH files: ", num_gch_files))
-  message(paste("Number of HCG files: ", num_hcg_files))
+  # Define columns we need
+  cols_needed <- c("chr", "pos", "strand", "site", "mc", "cov")
 
-  # Check if at least two GCH files are present
-  if(num_gch_files < 2) {
-    stop("At least two GCH files are required for analysis.")
+  message(sprintf("Starting processing with %d cores", cores))
+  start_time <- Sys.time()
+
+  # Set up parallel or sequential processing
+  if(cores > 1) {
+    # Parallel processing
+    tryCatch({
+      message("Cluster created at: ", Sys.time())
+      cl <- parallel::makeCluster(min(cores, parallel::detectCores() -1))
+      on.exit(parallel::stopCluster(cl), add = T)
+
+      parallel::clusterExport(cl = cl, varlist = "cols_needed", envir = environment())
+      parallel::clusterEvalQ(cl, {
+        library(data.table)
+        NULL
+      })
+
+      all_samples <- parallel::parLapply(cl, files.list, function(file) {
+        tryCatch({
+          df <- fread(
+            file,
+            select = 1:6,
+            showProgress = FALSE
+          )
+          setnames(df, cols_needed)
+          df[, ":="(
+            rate = mc/cov,
+            uniqueID = paste(chr, pos, site, sep="_")
+          )]
+          return(df)
+        }, error = function(e) {
+          message("Error processing file: ", file, "\n", e$message)
+          return(NULL)
+        })
+      })
+
+    }, error = function(e) {
+      message("Error in parallel processing: ", e$message)
+      message("Falling back to sequential processing...")
+      return(NULL)
+    })
+
+    # If parallel processing failed, fall back to sequential
+    if(is.null(all_samples)) {
+      cores <- 1
+    }
   }
 
-  files.names <- basename(str_sub(string = files.list, end = -8))
-  names(files.list) <- files.names
+  if(cores == 1) {
+    pb <- progress::progress_bar$new(
+      format = "  Loading [:bar] :percent in :elapsed",
+      total = length(files.list),
+      clear = FALSE
+    )
 
-  # Initialize progress bar
-  pb <- progress_bar$new(
-    format = "  Loading [:bar] :percent in :elapsed",
-    total = length(files.list), clear = FALSE
-  )
+    all_samples <- lapply(files.list, function(file) {
+      pb$tick()
+      df <- data.table::fread(
+        file,
+        select = 1:6,
+        showProgress = FALSE
+      )
+      data.table::setnames(df, cols_needed)
+      df[, ":="(
+        rate = mc/cov,
+        uniqueID = paste(chr, pos, site, sep="_")
+      )]
+      return(df)
+    })
+  }
 
-  # Load and preprocess each file, updating the progress bar
-  all_samples <- map(files.list, function(file) {
-    pb$tick()  # Update progress bar
-    df <- fread(file)
-    colnames(df) <- c("chr", "pos", "strand", "site", "mc", "cov", "stat")
-    df <- df[, .("chr", "pos", "strand", "site", "mc", "cov")]
-    df$rate <- df$mc / df$cov
-    df$uniqueID <- paste(df$chr, df$pos, df$site, sep = "_")
-    return(df)
-  })
+  # Remove any NULL entries from failed processing
+  all_samples <- all_samples[!sapply(all_samples, is.null)]
+  names(all_samples) <- file.names[!sapply(all_samples, is.null)]
 
-  gch_samples <- all_samples[grepl(pattern = "GCH", x = names(all_samples))]
-  hcg_samples <- all_samples[grepl(pattern = "HCG", x = names(all_samples))]
-
-  list(GCH = gch_samples, HCG = hcg_samples)
+  gc(verbose = FALSE)
+  return(all_samples)
 }
