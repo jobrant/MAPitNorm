@@ -4,7 +4,7 @@
 \alias{plot_ma}
 \title{Function to visualize differences vs average (MA plot)}
 \usage{
-plot_ma(original_data, within_norm, full_norm)
+plot_ma(original_data, within_norm, full_norm, max_points = 1e+05)
 }
 \arguments{
 \item{original_data}{Original data list before normalization}

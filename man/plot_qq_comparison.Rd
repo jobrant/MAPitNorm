@@ -2,20 +2,37 @@
 % Please edit documentation in R/visualize_normalization.R
 \name{plot_qq_comparison}
 \alias{plot_qq_comparison}
-\title{Function to visualize rates between samples by QQ plot}
+\title{Create enhanced QQ comparison plots with density information}
 \usage{
-plot_qq_comparison(original_data, within_norm, full_norm)
+plot_qq_comparison(
+  original_data,
+  within_norm,
+  full_norm,
+  color_scheme = "magma",
+  bins = 50,
+  sample_size = NULL,
+  seed = 42
+)
 }
 \arguments{
-\item{original_data}{Original data list before normalization}
+\item{original_data}{Original data list}
 
-\item{within_norm}{Data after within-group normalization}
+\item{within_norm}{Within-group normalized data}
 
-\item{full_norm}{Data after both normalizations}
+\item{full_norm}{Fully normalized data}
+
+\item{color_scheme}{Color scheme for density plot ("magma", "viridis", "plasma", "inferno")}
+
+\item{bins}{Number of hexagonal bins (default = 50)}
+
+\item{sample_size}{Optional sampling size (NULL for full dataset)}
+
+\item{seed}{Random seed for reproducibility (default = 42,
+the answer to life, the universe, and everything)}
 }
 \value{
-A ggplot object showing QQ comparisons
+A ggplot object showing sample comparisons with density information
 }
 \description{
-Function to visualize rates between samples by QQ plot
+Create enhanced QQ comparison plots with density information
 }

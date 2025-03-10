@@ -4,12 +4,14 @@
 \alias{create_plot_df}
 \title{Create data frame for plotting}
 \usage{
-create_plot_df(data_list, stage)
+create_plot_df(data_list, stage, group_name = NULL)
 }
 \arguments{
 \item{data_list}{List of methylation data}
 
 \item{stage}{Label for normalization stage}
+
+\item{group_name}{Name of the group (optional)}
 }
 \value{
 Data frame with methylation rates and metadata
