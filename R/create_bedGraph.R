@@ -91,11 +91,13 @@ process_single_file <- function(file_path, type, out) {
 #' @param type Type of bedGraph to create ("meth" or "cov")
 #' @param out Output directory path
 #' @param sample_name Name of the sample (optional)
+#'
+#' @importFrom data.table fwrite
 #' @return Path to created bedGraph file
 #' @keywords internal
 process_single_sample <- function(sample_df, type, out, group_name = NULL, sample_name = NULL) {
   # Convert to bedGraph format
-  bg_data <- data.frame(
+  bg_data <- data.table::data.table(
     chr = paste0("chr", sample_df$chr),
     start = sample_df$pos - 1,  # BED format is 0-based
     end = sample_df$pos,
@@ -112,8 +114,8 @@ process_single_sample <- function(sample_df, type, out, group_name = NULL, sampl
 
   out_file <- file.path(out, paste0(file_prefix, "_", type, ".bedGraph"))
 
-  write.table(bg_data, out_file,
-              sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+  data.table::fwrite(bg_data, out_file,
+              sep = "\t", quote = FALSE, col.names = FALSE)
 
   return(out_file)
 }
