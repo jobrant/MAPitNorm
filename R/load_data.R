@@ -28,109 +28,87 @@
 #' @export
 #'
 
-load_data <- function(dir_path, type = c("GCH", "HCG"), cores = 1) {
+load_data <- function(dir_path, sample_key_path, type = c("GCH", "HCG"), cores = 1) {
   # Match arg
   type <- match.arg(type)
 
-  # List only files of requested type
-  files.list <- list.files(
-    path = dir_path,
-    pattern = paste0(".*", type, ".*\\.tsv"),
-    full.names = T
-    )
-
-  # Validation step
-  if(length(files.list) == 0) {
-    stop(sprintf("No %s methylation call files found in the directory.", type))
-  }
-  if(length(files.list) < 2) {
-    stop(sprintf("At least two %s files are required for analysis.", type))
+  # Validate sample key path
+  if (missing(sample_key_path) || !file.exists(sample_key_path)) {
+    stop("Sample key file path must be provided and exist.")
   }
 
-  # Name files
-  file.names <- basename(tools::file_path_sans_ext(files.list, compression = T))
-  names(files.list) <- file.names
+  # Read sample key (assuming tab-separated with headers)
+  sample_key <- fread(sample_key_path)
+  required_cols <- c("sample", "Time_point", "file_path")
+  if (!all(required_cols %in% colnames(sample_key))) {
+    stop("Sample key must contain columns: ", paste(required_cols, collapse = ", "))
+  }
 
-  message(sprintf("Loading %d %s files...", length(files.list), type))
+  # Validate file paths and filter for methylation type
+  sample_key[, file_path_full := {
+    # Check if file_path is absolute or relative
+    is_absolute <- startsWith(file_path, "/") | startsWith(file_path, "\\") | grepl("^[A-Za-z]:", file_path)
+    full_path <- ifelse(is_absolute, file_path, file.path(dir_path, file_path))
+    # Normalize path separators
+    normalizePath(full_path, mustWork = FALSE)
+  }]
 
-  # Define columns we need
+  # Filter for files containing the methylation type and verify existence
+  sample_key <- sample_key[str_detect(basename(file_path_full), type) & file.exists(file_path_full)]
+  if (nrow(sample_key) == 0) {
+    stop(sprintf("No %s files found matching sample key entries.", type))
+  }
+  if (nrow(sample_key) < 2) {
+    stop(sprintf("At least two %s files with valid paths are required.", type))
+  }
+
+  # Warn about non-existent or non-matching files
+  invalid_files <- sample_key[!file.exists(file_path_full) | !str_detect(basename(file_path_full), type)]
+  if (nrow(invalid_files) > 0) {
+    warning("Some sample key entries have invalid or non-matching file paths: ",
+            paste(invalid_files$sample, invalid_files$Time_point, sep = "_", collapse = ", "))
+  }
+
+  # Define columns needed for processing
   cols_needed <- c("chr", "pos", "strand", "site", "mc", "cov")
 
-  message(sprintf("Starting processing with %d cores", cores))
-  start_time <- Sys.time()
-
-  # Set up parallel or sequential processing
-  if(cores > 1) {
-    # Parallel processing
-    tryCatch({
-      message("Cluster created at: ", Sys.time())
-      cl <- parallel::makeCluster(min(cores, parallel::detectCores() -1))
-      on.exit(parallel::stopCluster(cl), add = T)
-
-      parallel::clusterExport(cl = cl, varlist = "cols_needed", envir = environment())
-      parallel::clusterEvalQ(cl, {
-        library(data.table)
-        NULL
-      })
-
-      all_samples <- parallel::parLapply(cl, files.list, function(file) {
-        tryCatch({
-          df <- fread(
-            file,
-            select = 1:6,
-            showProgress = FALSE
-          )
-          setnames(df, cols_needed)
-          df[, ":="(
-            rate = mc/cov,
-            uniqueID = paste(chr, pos, site, sep="_")
-          )]
-          return(df)
-        }, error = function(e) {
-          message("Error processing file: ", file, "\n", e$message)
-          return(NULL)
-        })
-      })
-
-    }, error = function(e) {
-      message("Error in parallel processing: ", e$message)
-      message("Falling back to sequential processing...")
-      return(NULL)
+  # Load files
+  files_to_load <- sample_key$file_path_full
+  if (cores > 1) {
+    cl <- makeCluster(min(cores, detectCores() - 1))
+    on.exit(stopCluster(cl))
+    clusterExport(cl, varlist = "cols_needed", envir = environment())
+    clusterEvalQ(cl, { library(data.table) })
+    all_data <- parLapply(cl, files_to_load, function(file) {
+      df <- fread(file, select = 1:6, showProgress = FALSE)
+      setnames(df, cols_needed)
+      df[, `:=`(rate = mc / cov, uniqueID = paste(chr, pos, site, sep = "_"))]
+      return(df)
     })
-
-    # If parallel processing failed, fall back to sequential
-    if(is.null(all_samples)) {
-      cores <- 1
-    }
-  }
-
-  if(cores == 1) {
-    pb <- progress::progress_bar$new(
+  } else {
+    pb <- progress_bar$new(
       format = "  Loading [:bar] :percent in :elapsed",
-      total = length(files.list),
+      total = length(files_to_load),
       clear = FALSE
     )
-
-    all_samples <- lapply(files.list, function(file) {
+    all_data <- lapply(files_to_load, function(file) {
       pb$tick()
-      df <- data.table::fread(
-        file,
-        select = 1:6,
-        showProgress = FALSE
-      )
-      data.table::setnames(df, cols_needed)
-      df[, ":="(
-        rate = mc/cov,
-        uniqueID = paste(chr, pos, site, sep="_")
-      )]
+      df <- fread(file, select = 1:6, showProgress = FALSE)
+      setnames(df, cols_needed)
+      df[, `:=`(rate = mc / cov, uniqueID = paste(chr, pos, site, sep = "_"))]
       return(df)
     })
   }
 
-  # Remove any NULL entries from failed processing
-  all_samples <- all_samples[!sapply(all_samples, is.null)]
-  names(all_samples) <- file.names[!sapply(all_samples, is.null)]
+  # Set names for the data list
+  sample_names <- paste(sample_key$sample, sample_key$Time_point, sep = "_")
+  names(all_data) <- sample_names
 
-  gc(verbose = FALSE)
-  return(all_samples)
+  # Prepare metadata
+  metadata <- copy(sample_key)
+  metadata[, sample_name := sample_names]
+  metadata[, file_path_full := NULL] # Remove temporary column
+
+  # Return data and metadata
+  return(list(data = all_data, metadata = metadata))
 }
