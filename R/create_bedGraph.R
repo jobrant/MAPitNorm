@@ -115,7 +115,11 @@ process_single_sample <- function(sample_df, type, out, group_name = NULL, sampl
   out_file <- file.path(out, paste0(file_prefix, "_", type, ".bedGraph"))
 
   data.table::fwrite(bg_data, out_file,
-              sep = "\t", quote = FALSE, col.names = FALSE)
+                     sep = "\t",
+                     quote = FALSE,
+                     col.names = FALSE,
+                     scipen = 999
+  )
 
   return(out_file)
 }
