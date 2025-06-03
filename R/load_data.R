@@ -7,6 +7,8 @@
 #' containing sample information with columns: group_id, replicate, sample_id, file_name.
 #' @param type Character string specifying which type of files to load. If NULL (default),
 #' it will use file names from the sample sheet as is.
+#' @param groups Character vector of group_ids to include. If NULL (default), all
+#' groups will be loaded.
 #' @param cores Number of cores to use for parallel processing. Default is 1
 #'   (no parallel processing).
 #'
@@ -20,21 +22,22 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Load files based on sample sheet
-#' samples <- load_data("path/to/files", "path/to/sample_sheet.tsv")
+#' # Load all files based on sample sheet
+#' all_samples <- load_data("path/to/files", "path/to/sample_sheet.tsv")
 #'
-#' # Or with a data.frame already loaded
-#' sample_df <- read.delim("path/to/sample_sheet.tsv")
-#' samples <- load_data("path/to/files", sample_df)
+#' # Load only samples from specific groups
+#' group1_samples <- load_data("path/to/files", "path/to/sample_sheet.tsv",
+#'                             groups = c("M1", "M2"))
 #'
-#' # Specify type to filter only certain files
-#' hcg_samples <- load_data("path/to/files", "path/to/sample_sheet.tsv", type = "HCG")
+#' # Combine group filtering with type filtering
+#' group1_hcg <- load_data("path/to/files", "path/to/sample_sheet.tsv",
+#'                         type = "HCG", groups = "M1")
 #' }
 #'
 #' @export
 #'
 
-load_data <- function(dir_path, sample_sheet, type = NULL, cores = 1) {
+load_data <- function(dir_path, sample_sheet, type = NULL, groups = NULL, cores = 1) {
   # Load the sample sheet if it's a file path
   if (is.character(sample_sheet) && length(sample_sheet) == 1) {
     message("Loading sample sheet from: ", sample_sheet)
@@ -58,8 +61,30 @@ load_data <- function(dir_path, sample_sheet, type = NULL, cores = 1) {
          paste(missing_cols, collapse = ", "))
   }
 
+  # Filter by groups if specified
+  if (!is.null(groups)) {
+    # Check if requested groups exist in the sample sheet
+    missing_groups <- setdiff(groups, unique(sample_data$group_id))
+    if (length(missing_groups) > 0) {
+      warning("The following requested groups are not in the sample sheet: ",
+              paste(missing_groups, collapse = ", "))
+    }
+
+    # Filter the sample data
+    original_samples <- nrow(sample_data)
+    sample_data <- sample_data[group_id %in% groups]
+
+    if (nrow(sample_data) == 0) {
+      stop("No samples found for the requested groups: ", paste(groups, collapse = ", "))
+    }
+
+    message(sprintf("Filtered to %d samples from %d groups",
+                    nrow(sample_data), length(intersect(groups, unique(sample_data$group_id)))))
+  }
+
   # Filter for specific type if provided
   if (!is.null(type)) {
+    original_samples <- nrow(sample_data)
     sample_data <- sample_data[grep(type, file_name)]
     if (nrow(sample_data) == 0) {
       stop(sprintf("No %s files found in sample sheet.", type))
@@ -111,7 +136,7 @@ load_data <- function(dir_path, sample_sheet, type = NULL, cores = 1) {
       # Extract the columns we need
       n_rows <- length(split_lines)
 
-      # Pre-allocate vectors for efficiency
+      # Preallocate vectors for efficiency
       chr <- character(n_rows)
       pos <- integer(n_rows)
       strand <- character(n_rows)
@@ -119,7 +144,8 @@ load_data <- function(dir_path, sample_sheet, type = NULL, cores = 1) {
       mc <- integer(n_rows)
       cov <- integer(n_rows)
 
-      # Extract data - avoids loading full data then sub setting
+      # Extract data column by column
+      # This avoids creating a large intermediate matrix
       for (i in 1:n_rows) {
         line <- split_lines[[i]]
         chr[i] <- line[1]
@@ -216,7 +242,18 @@ load_data <- function(dir_path, sample_sheet, type = NULL, cores = 1) {
   # Attach sample metadata to the returned list as an attribute
   attr(all_samples, "sample_metadata") <- filtered_sample_data
 
+  # Summarize loaded files by group
+  group_counts <- table(filtered_sample_data$group_id)
+  message("Files loaded by group:")
+  for (grp in names(group_counts)) {
+    message("  Group ", grp, ": ", group_counts[grp], " files")
+  }
+
   message("Successfully loaded ", length(all_samples), " out of ", length(files.list), " files")
+
+  # Calculate total elapsed time
+  end_time <- Sys.time()
+  message("Total time: ", format(end_time - start_time))
 
   gc(verbose = FALSE)
   return(all_samples)
