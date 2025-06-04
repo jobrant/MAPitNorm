@@ -3,3 +3,6 @@
 .RData
 .Ruserdata
 dev/
+src/*.o
+src/*.dll
+src/*.RccpExports.cpp
