@@ -37,6 +37,7 @@
 #' @export
 #'
 
+
 load_data <- function(dir_path, sample_sheet, type = NULL, groups = NULL, cores = 1) {
   # Load the sample sheet if it's a file path
   if (is.character(sample_sheet) && length(sample_sheet) == 1) {
