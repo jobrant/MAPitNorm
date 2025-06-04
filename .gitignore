@@ -5,4 +5,4 @@
 dev/
 src/*.o
 src/*.dll
-src/*.RccpExports.cpp
+src/RccpExports.cpp
