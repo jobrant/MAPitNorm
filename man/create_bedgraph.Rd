@@ -38,7 +38,9 @@ Converts normalized data into bedGraph files
 }
 \details{
 Converts methylation data to bedGraph format. Can handle multiple input types:
-- If given a normalized data object (list of lists), processes all samples by default
-- If given a single sample data frame, processes just that sample
-- If given a file path, loads and processes that file
+\itemize{
+\item If given a normalized data object (list of lists), processes all samples by default
+\item If given a single sample data frame, processes just that sample
+\item If given a file path, loads and processes that file
+}
 }

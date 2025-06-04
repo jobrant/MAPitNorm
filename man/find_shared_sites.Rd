@@ -4,14 +4,15 @@
 \alias{find_shared_sites}
 \title{Find Shared Sites}
 \usage{
-find_shared_sites(samples)
+find_shared_sites(allc)
 }
 \arguments{
-\item{samples}{List of sample data frames.}
+\item{allc}{A list returned by load_data(), containing a \code{data} element with a list
+of sample data.tables, each with a \code{uniqueID} column.}
 }
 \value{
-A vector of shared site identifiers.
+A vector of shared site identifiers (uniqueID values).
 }
 \description{
-Identify shared sites across all samples within GCH or HCG data.
+Identify shared sites across all samples within GCH or HCG data loaded using load_data().
 }

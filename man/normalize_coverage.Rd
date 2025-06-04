@@ -26,17 +26,17 @@ Default is FALSE.}
 }
 \value{
 A list of lists with the same structure as the input, containing normalized
-        coverage data. Each data frame in the output will contain normalized versions
-        of 'cov' and 'mc' columns, plus a calculated 'rate' column (mc/cov).
+coverage data. Each data frame in the output will contain normalized versions
+of 'cov' and 'mc' columns, plus a calculated 'rate' column (mc/cov).
 }
 \description{
 Normalizes methylation coverage data within groups (replicates) and optionally between groups.
 }
 \details{
 When between_groups = FALSE, each group is normalized independently,
-         preserving potential biological differences in total accessibility between groups.
-         When between_groups = TRUE, all samples are normalized to the same mean coverage,
-         which might mask global accessibility changes between conditions.
+preserving potential biological differences in total accessibility between groups.
+When between_groups = TRUE, all samples are normalized to the same mean coverage,
+which might mask global accessibility changes between conditions.
 }
 \examples{
 \dontrun{

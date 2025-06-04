@@ -46,8 +46,8 @@ non-linear enzyme efficiency differences.
 }
 \details{
 This function performs a two-step normalization:
-         1. Within-group normalization to handle technical variation between replicates
-         2. Between-group normalization to adjust for global efficiency differences
-         while preserving biological differences. The higher between_alpha preserves
-         more of the biological differences between groups.
+1. Within-group normalization to handle technical variation between replicates
+2. Between-group normalization to adjust for global efficiency differences
+while preserving biological differences. The higher between_alpha preserves
+more of the biological differences between groups.
 }
