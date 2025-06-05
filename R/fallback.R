@@ -211,7 +211,7 @@ load_data_parallel <- function(files.list, cores) {
       on.exit(parallel::stopCluster(cl), add = TRUE)
 
       # Export the loading function
-      parallel::clusterExport(cl = cl, varlist = c("load_file"), envir = environment())
+      parallel::clusterExport(cl = cl, varlist = c("load_single_file_r"), envir = environment())
 
       parallel::clusterEvalQ(cl, {
         library(data.table)
