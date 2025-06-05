@@ -9,10 +9,45 @@ MAPitNorm is a specialized R package designed for normalizing methylation data f
 ## Core Functions
 
 ### Data Loading and Preparation
-- `load_data()`: Efficiently loads and processes methylation call files; optionally with multiple cores
-  - Handles both GCH and HCG methylation contexts
-  - Performs initial data validation and organization
-  - Returns a structured list of samples grouped by type
+load_data(): Efficiently loads and processes methylation call files with both C++ and R implementations
+- C++ implementation provides up to 85% faster loading times
+- Graceful fallback to pure R when C++ compilation isn't available
+- Optional parallel processing with multiple cores
+- Flexible sample selection through a sample sheet format
+- Handles both GCH and HCG methylation contexts
+- Supports filtering by group IDs for targeted analysis
+- Performs initial data validation and organization
+- Returns a structured list of samples with attached metadata
+
+### Performance
+The package implements a high-performance C++ reader that can significantly reduce loading times for large methylation files:
+
+Implementation	Time per file	Time for 10 files
+C++ loading	~19 seconds	~3.5 minutes
+R loading	~2.5 minutes	~25 minutes
+For users without C++ compilation tools, the package automatically falls back to a pure R implementation, ensuring compatibility across all environments.
+
+# Example Usage to Load
+# Load all samples using C++ implementation (default)
+all_samples <- load_data(
+  dir_path = "path/to/methylation_files/",
+  sample_sheet = "sample_metadata.csv"
+)
+
+# Load only specific groups
+group_samples <- load_data(
+  dir_path = "path/to/methylation_files/",
+  sample_sheet = "sample_metadata.csv",
+  groups = c("M1", "M2")
+)
+
+# Filter by type and use pure R implementation
+hcg_samples <- load_data(
+  dir_path = "path/to/methylation_files/",
+  sample_sheet = "sample_metadata.csv",
+  type = "HCG",
+  use_cpp = FALSE
+)
 
 ### Normalization Process
 
