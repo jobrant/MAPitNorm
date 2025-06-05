@@ -22,12 +22,15 @@ load_data(): Efficiently loads and processes methylation call files with both C+
 ### Performance
 The package implements a high-performance C++ reader that can significantly reduce loading times for large methylation files:
 
-Implementation	Time per file	Time for 10 files
-C++ loading	~19 seconds	~3.5 minutes
-R loading	~2.5 minutes	~25 minutes
+| Implementation | Time per file | Time for 10 files |
+|----------------|---------------|-------------------|
+| C++ loading    | ~19 seconds   | ~3.5 minutes      |
+| R loading      | ~2.5 minutes  | ~25 minutes       |
+
 For users without C++ compilation tools, the package automatically falls back to a pure R implementation, ensuring compatibility across all environments.
 
-# Example Usage to Load
+### Example Usage to Load
+```r
 # Load all samples using C++ implementation (default)
 all_samples <- load_data(
   dir_path = "path/to/methylation_files/",
@@ -48,7 +51,7 @@ hcg_samples <- load_data(
   type = "HCG",
   use_cpp = FALSE
 )
-
+```
 ### Normalization Process
 
 #### 1. Coverage Normalization (`normalize_coverage`)
