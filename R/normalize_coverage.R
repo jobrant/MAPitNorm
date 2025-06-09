@@ -3,7 +3,8 @@
 #' @param data_list A list of lists containing methylation data frames. Each inner list
 #'        represents a group and contains one or more replicate data frames. Each data frame
 #'        must contain columns 'cov' and 'mc'.
-#' @param group_names A character vector of group names corresponding to the names in data_list.
+#' @param group_names Optional character vector of group names. If NULL (default),
+#'   will be extracted from the metadata attached to data_list.
 #' @param between_groups Logical indicating whether to normalize between groups.
 #'        Default is FALSE to preserve biological differences between groups.
 #' @param diagnostics Logical indicating whether to print diagnostic information.
@@ -29,8 +30,31 @@
 #'
 #' @export
 
-normalize_coverage <- function(data_list, group_names, between_groups = FALSE,  diagnostics = FALSE) {
+normalize_coverage <- function(data_list, group_names = NULL,
+                               between_groups = FALSE,  diagnostics = FALSE) {
   data.table::setDTthreads(threads = parallel::detectCores())  # Optional: for better performance
+
+  # Extract group names from metadata if not provided
+  if (is.null(group_names)) {
+    # Check for metadata attribute
+    if (is.list(data_list) && !is.null(attr(data_list, "sample_metadata"))) {
+      sample_metadata <- attr(data_list, "sample_metadata")
+      group_names <- unique(sample_metadata$group_id)
+      if (diagnostics) {
+        message("Using group names extracted from metadata: ",
+                paste(group_names, collapse = ", "))
+      }
+    } else if (is.list(data_list) && all(names(data_list) != "")) {
+      # If no metadata but data_list has names, use those as group names
+      group_names <- names(data_list)
+      if (diagnostics) {
+        message("Using list names as group names: ",
+                paste(group_names, collapse = ", "))
+      }
+    } else {
+      stop("No group_names provided and unable to extract from metadata")
+    }
+  }
 
   # Input validation
   if (!is.list(data_list)) stop("data_list must be a list")
