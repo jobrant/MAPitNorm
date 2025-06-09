@@ -107,6 +107,7 @@ normalize_methylation_within_set <- function(sample_list,
                                              diagnostics = TRUE) {
 
   if(diagnostics) cat("Calculating average rates...\n")
+
   # Calculate average methylation rates
   avg_rates <- rowMeans(do.call(cbind, lapply(sample_list, function(df) df$rate)))
 
@@ -129,6 +130,12 @@ normalize_methylation_within_set <- function(sample_list,
 
   rate_quantiles <- cut(avg_rates, breaks = breaks, include.lowest = TRUE)
 
+  # Check that quantiles are valid and match data size
+  if (length(rate_quantiles) != n_sites) {
+    stop(sprintf("Quantile vector length (%d) doesn't match site count (%d)",
+                 length(rate_quantiles), n_sites))
+  }
+
   # Initialize result list and progress bar
   result <- sample_list
   if(diagnostics) {
@@ -141,32 +148,61 @@ normalize_methylation_within_set <- function(sample_list,
     quant <- levels(rate_quantiles)[i]
     sites_in_quantile <- which(rate_quantiles == quant)
 
-    if(length(sites_in_quantile) > 0) {
-      # Calculate average rate for this quantile
-      quant_rates <- sapply(result, function(df) mean(df$rate[sites_in_quantile]))
-      avg_quant_rate <- mean(quant_rates)
-
-      # Calculate and apply scaling factors with structure preservation
-      result <- map2(result, quant_rates, function(df, sample_rate) {
-        dt <- data.table::copy(df)
-        data.table::setDT(dt)
-
-        # Get current rates for these sites
-        current_rates <- dt$rate[sites_in_quantile]
-
-        # Preserve structure while normalizing to average
-        centered <- current_rates - mean(current_rates)
-        new_rates <- avg_quant_rate + alpha * centered
-
-        # Update methylation counts and rates
-        dt[sites_in_quantile, `:=`(
-          mc = cov * new_rates,
-          rate = new_rates
-        )]
-
-        return(dt)
-      })
+    # Check for empty quantiles
+    if(length(sites_in_quantile) == 0) {
+      if(diagnostics) cat(sprintf("Warning: Quantile %s is empty, skipping\n", quant))
+      if(diagnostics) setTxtProgressBar(pb, i)
+      next
     }
+
+    # Validate site indices
+    max_sites <- min(sapply(result, nrow))
+    if(any(sites_in_quantile > max_sites)) {
+      problem_sites <- sites_in_quantile[sites_in_quantile > max_sites]
+      if(diagnostics) cat(sprintf("Warning: Removing %d out-of-bounds sites\n",
+                                  length(problem_sites)))
+      sites_in_quantile <- sites_in_quantile[sites_in_quantile <= max_sites]
+
+      # Skip if no valid sites remain
+      if(length(sites_in_quantile) == 0) {
+        if(diagnostics) setTxtProgressBar(pb, i)
+        next
+      }
+    }
+
+    # Calculate average rate for this quantile
+    quant_rates <- sapply(result, function(df) mean(df$rate[sites_in_quantile]))
+    avg_quant_rate <- mean(quant_rates)
+
+    # Calculate and apply scaling factors with structure preservation
+    result <- map2(result, quant_rates, function(df, sample_rate) {
+      dt <- data.table::copy(df)
+      data.table::setDT(dt)
+
+      # Safety check for this specific data table
+      if(max(sites_in_quantile) > nrow(dt)) {
+        valid_sites <- sites_in_quantile[sites_in_quantile <= nrow(dt)]
+        if(length(valid_sites) == 0) {
+          return(dt)  # Return unchanged if no valid sites
+        }
+        sites_in_quantile <- valid_sites
+      }
+
+      # Get current rates for these sites
+      current_rates <- dt$rate[sites_in_quantile]
+
+      # Preserve structure while normalizing to average
+      centered <- current_rates - mean(current_rates)
+      new_rates <- avg_quant_rate + alpha * centered
+
+      # Update methylation counts and rates
+      dt[sites_in_quantile, `:=`(
+        mc = cov * new_rates,
+        rate = new_rates
+      )]
+
+      return(dt)
+    })
 
     if(diagnostics) setTxtProgressBar(pb, i)
   }
@@ -178,3 +214,4 @@ normalize_methylation_within_set <- function(sample_list,
 
   return(result)
 }
+
