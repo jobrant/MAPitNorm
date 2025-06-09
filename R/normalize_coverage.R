@@ -134,20 +134,3 @@ normalize_coverage <- function(data_list, group_names = NULL,
   return(normalized_groups)
 }
 
-#' Internal function to normalize a group of samples
-#' @param replicates List of replicate data frames
-#' @param sf Vector of scaling factors
-#' @return List of normalized data frames
-#' @keywords internal
-.normalize_group <- function(replicates, sf) {
-  purrr::map2(replicates, sf, function(df, s) {
-    if(is.na(s)) stop("Scaling factor is NA")
-    dt <- data.table::copy(df)
-    data.table::setDT(dt)
-    data.table::setDT(dt)[, c("cov", "mc", "rate") := list(cov/s,
-                                                           mc/s,
-                                                           mc/cov
-    )]
-    return(dt)
-  })
-}

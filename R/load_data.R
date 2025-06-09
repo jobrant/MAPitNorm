@@ -24,16 +24,16 @@ load_data <- function(dir_path, sample_sheet, type = NULL, groups = NULL,
                       cores = 1, use_cpp = TRUE) {
 
   # Load sample sheet
-  sample_data <- load_sample_sheet(sample_sheet)
+  sample_data <- .load_sample_sheet(sample_sheet)
 
   # Filter by groups if specified
   if (!is.null(groups)) {
-    sample_data <- filter_by_groups(sample_data, groups)
+    sample_data <- .filter_by_groups(sample_data, groups)
   }
 
   # Filter by type if specified
   if (!is.null(type)) {
-    sample_data <- filter_by_type(sample_data, type)
+    sample_data <- .filter_by_type(sample_data, type)
   }
 
   # Construct file paths
@@ -41,7 +41,7 @@ load_data <- function(dir_path, sample_sheet, type = NULL, groups = NULL,
   names(files.list) <- sample_data$sample_id
 
   # Check file existence
-  files.list <- check_files_exist(files.list)
+  files.list <- .check_files_exist(files.list)
   if (length(files.list) < 2) {
     stop("At least two valid files are required for analysis.")
   }
@@ -66,13 +66,13 @@ load_data <- function(dir_path, sample_sheet, type = NULL, groups = NULL,
 
   # Load data using appropriate implementation
   if (use_cpp_impl) {
-    all_samples <- load_data_cpp(files.list, cores)
+    all_samples <- .load_data_cpp(files.list, cores)
   } else {
-    all_samples <- load_data_r(files.list, cores)
+    all_samples <- .load_data_r(files.list, cores)
   }
 
   # Post-process and attach metadata
-  all_samples <- post_process_samples(all_samples, sample_data, files.list)
+  all_samples <- .post_process_samples(all_samples, sample_data, files.list)
 
   end_time <- Sys.time()
   elapsed <- end_time - start_time
@@ -81,36 +81,4 @@ load_data <- function(dir_path, sample_sheet, type = NULL, groups = NULL,
   return(all_samples)
 }
 
-# Internal function to load using C++ implementation
-load_data_cpp <- function(files.list, cores) {
-  # Call the C++ function
-  raw_data <- readMethylationFiles(files.list)
-  names(raw_data) <- names(files.list)
-
-  # Convert to data.tables and add calculated columns
-  all_samples <- lapply(seq_along(raw_data), function(i) {
-    df <- as.data.table(raw_data[[i]])
-    df[, rate := ifelse(cov > 0, mc/cov, 0)]
-    df[, uniqueID := paste(chr, pos, site, sep="_")]
-    return(df)
-  })
-
-  names(all_samples) <- names(raw_data)
-  return(all_samples)
-}
-
-# Internal function as fallback using pure R
-load_data_r <- function(files.list, cores) {
-  # Import helper functions using ::
-  # This ensures the package works even if these packages aren't loaded
-  if (cores > 1 && requireNamespace("parallel", quietly = TRUE)) {
-    # Use parallel processing
-    all_samples <- load_data_parallel(files.list, cores)
-  } else {
-    # Use sequential processing with progress bar
-    all_samples <- load_data_sequential(files.list)
-  }
-
-  return(all_samples)
-}
 
