@@ -4,7 +4,8 @@
 #' non-linear enzyme efficiency differences.
 #'
 #' @param data_list List of normalized coverage data
-#' @param group_names Character vector of group names
+#' @param group_names Optional character vector of group names. If NULL (default),
+#'   will be extracted from the metadata attached to data_list.
 #' @param within_groups Logical indicating whether to normalize within groups (default = TRUE)
 #' @param between_groups Logical indicating whether to normalize between groups (default = TRUE)
 #' @param within_alpha Numeric between 0 and 1 controlling structure preservation within groups (default = 0.3)
@@ -30,7 +31,7 @@
 #'
 #' @export
 normalize_methylation_rates <- function(data_list,
-                                        group_names,
+                                        group_names = NULL,
                                         within_groups = TRUE,
                                         between_groups = TRUE,
                                         within_alpha = 0.3,
@@ -38,6 +39,28 @@ normalize_methylation_rates <- function(data_list,
                                         sites_per_quantile = 1000,
                                         max_quantiles = 50,
                                         diagnostics = TRUE) {
+
+  # Extract group names from metadata if not provided
+  if (is.null(group_names)) {
+    # Check for metadata attribute
+    if (is.list(data_list) && !is.null(attr(data_list, "sample_metadata"))) {
+      sample_metadata <- attr(data_list, "sample_metadata")
+      group_names <- unique(sample_metadata$group_id)
+      if (diagnostics) {
+        message("Using group names extracted from metadata: ",
+                paste(group_names, collapse = ", "))
+      }
+    } else if (is.list(data_list) && all(names(data_list) != "")) {
+      # If no metadata but data_list has names, use those as group names
+      group_names <- names(data_list)
+      if (diagnostics) {
+        message("Using list names as group names: ",
+                paste(group_names, collapse = ", "))
+      }
+    } else {
+      stop("No group_names provided and unable to extract from metadata")
+    }
+  }
 
   # Input validation
   if (!is.list(data_list)) stop("data_list must be a list")
