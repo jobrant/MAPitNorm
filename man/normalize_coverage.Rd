@@ -6,7 +6,7 @@
 \usage{
 normalize_coverage(
   data_list,
-  group_names,
+  group_names = NULL,
   between_groups = FALSE,
   diagnostics = FALSE
 )
@@ -16,7 +16,8 @@ normalize_coverage(
 represents a group and contains one or more replicate data frames. Each data frame
 must contain columns 'cov' and 'mc'.}
 
-\item{group_names}{A character vector of group names corresponding to the names in data_list.}
+\item{group_names}{Optional character vector of group names. If NULL (default),
+will be extracted from the metadata attached to data_list.}
 
 \item{between_groups}{Logical indicating whether to normalize between groups.
 Default is FALSE to preserve biological differences between groups.}

@@ -6,7 +6,7 @@
 \usage{
 normalize_methylation_rates(
   data_list,
-  group_names,
+  group_names = NULL,
   within_groups = TRUE,
   between_groups = TRUE,
   within_alpha = 0.3,
@@ -19,7 +19,8 @@ normalize_methylation_rates(
 \arguments{
 \item{data_list}{List of normalized coverage data}
 
-\item{group_names}{Character vector of group names}
+\item{group_names}{Optional character vector of group names. If NULL (default),
+will be extracted from the metadata attached to data_list.}
 
 \item{within_groups}{Logical indicating whether to normalize within groups (default = TRUE)}
 

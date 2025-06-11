@@ -2,17 +2,23 @@
 % Please edit documentation in R/find_shared_sites.R
 \name{find_shared_sites}
 \alias{find_shared_sites}
-\title{Find Shared Sites}
+\title{Find and Filter Shared Sites}
 \usage{
-find_shared_sites(allc)
+find_shared_sites(allc, filter = TRUE, quiet = FALSE)
 }
 \arguments{
-\item{allc}{A list returned by load_data(), containing a \code{data} element with a list
-of sample data.tables, each with a \code{uniqueID} column.}
+\item{allc}{A list of samples returned by load_data(), with each element
+being a data.table containing a \code{uniqueID} column.}
+
+\item{filter}{Logical, whether to filter the data to only include shared sites (default = TRUE).
+If FALSE, only returns the vector of shared site IDs.}
+
+\item{quiet}{Logical, whether to suppress progress messages (default = FALSE).}
 }
 \value{
-A vector of shared site identifiers (uniqueID values).
+If filter=TRUE, returns the filtered list with only shared sites.
+If filter=FALSE, returns a vector of shared site identifiers (uniqueID values).
 }
 \description{
-Identify shared sites across all samples within GCH or HCG data loaded using load_data().
+Identify shared sites across all samples and optionally filters data to only include these sites.
 }

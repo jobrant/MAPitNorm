@@ -4,16 +4,19 @@
 \alias{split_by_groups}
 \title{Split data into Groups and Replicates}
 \usage{
-split_by_groups(data_list, group_names)
+split_by_groups(data_list, group_names = NULL)
 }
 \arguments{
-\item{data_list}{List containing GCH or HCG methylation data.}
+\item{data_list}{List containing methylation data as returned by load_data()..}
 
-\item{group_names}{Vector of group names to split by.}
+\item{group_names}{Optional vector of group names to include. If NULL (default),
+all groups found in the sample metadata will be used.}
 }
 \value{
-A list containing GCH and HCG samples with replicates by group.
+A list containing samples organized by group,
+with each group containing its replicates.
 }
 \description{
-Splits data list into group specific lists so all replicates per group are together
+Splits data list into group specific lists so all replicates per group are together.
+Works with data loaded using load_data().
 }
