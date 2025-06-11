@@ -1,531 +1,152 @@
-#' Create data frame for plotting
-#' @param data_list List of methylation data
-#' @param stage Label for normalization stage
-#' @param group_name Name of the group (optional)
-#' @return Data frame with methylation rates and metadata
-#' @keywords internal
-create_plot_df <- function(data_list, stage, group_name = NULL) {
-  df <- do.call(rbind, lapply(names(data_list), function(sample) {
-    data.frame(
-      rate = data_list[[sample]]$rate,
-      sample = sample,
-      stage = stage,
-      group = if(is.null(group_name)) "group" else group_name
-    )
-  }))
-
-  # Make stage a factor with ordered levels
-  df$stage <- factor(df$stage,
-                     levels = c("Original",
-                                "Within-group normalized",
-                                "Fully normalized"))
-  return(df)
-}
-
-#' Create plot data frame for groups
-#' @param data_list List of methylation data
-#' @param stage Label for normalization stage
-#' @param group_names Vector of group names
-#' @return Data frame with methylation rates and group information
-#' @keywords internal
-create_plot_df_groups <- function(data_list, stage, group_names) {
-  do.call(rbind, lapply(seq_along(group_names), function(i) {
-    group <- group_names[i]
-    do.call(rbind, lapply(names(data_list[[i]]), function(sample) {
-      data.frame(
-        rate = data_list[[i]][[sample]]$rate,
-        sample = sample,
-        group = group,
-        stage = stage
-      )
-    }))
-  }))
-}
-
-
-#' Visualize Normalization Effects
+#' Create Methylation Normalization Visualization Report
 #'
-#' @param original_data Original data list before normalization
-#' @param within_norm Data after within-group normalization
-#' @param full_norm Data after both normalizations
-#' @param output_file Optional file path to save plots
-#' @return A grid arrangement of four diagnostic plots
-#' @importFrom ggplot2 ggplot aes geom_density geom_point geom_boxplot facet_wrap
-#' @importFrom ggplot2 theme_minimal labs geom_abline geom_hline theme element_text
-#' @importFrom gridExtra grid.arrange
-#' @importFrom grDevices dev.off
-#' @export
-visualize_normalization <- function(original_data, within_norm, full_norm, output_file = NULL) {
-  p1 <- plot_rate_distributions(original_data, within_norm, full_norm)
-  p2 <- plot_qq_comparison(original_data, within_norm, full_norm)
-  p3 <- plot_ma(original_data, within_norm, full_norm)
-  p4 <- plot_boxplots(original_data, within_norm, full_norm)
-
-  combined <- gridExtra::grid.arrange(p1, p2, p3, p4, ncol = 2)
-
-  if (!is.null(output_file)) {
-    ggsave(output_file, combined, width = 12, height = 10)
-  }
-
-  return(combined)
-}
-
-#' Function to visualize density plots of rate distribution
+#' Generates visualization reports to compare methylation data across normalization stages.
+#' Supports density, QQ, MA, boxplot, and correlation plots, with individual reports per
+#' plot type and a combined report for multiple plot types.
 #'
-#' @param original_data Original data list
-#' @param within_norm Data after within-group normalization
-#' @param full_norm Data after both normalizations
-#' @return A ggplot object showing density distributions
+#' @param data_list List containing methylation data at different normalization stages
+#' @param stages Character vector of stage names corresponding to data_list elements
+#' @param plots Character vector of plot types to include
+#' @param sample_size Number of sites to randomly sample for visualization (NULL for all)
+#' @param output_file Optional file path to save visualization report
+#' @param output_dir Directory to save additional plot reports (default is same as output_file).
+#' @param theme ggplot2 theme to use apply (defaults to theme_minimual()).
+#' @return A list containing:
+#'   \item{plots}{List of ggplot objects}
+#'   \item{combined}{Combined plot (if output_file specified)}
+#'   \item{data}{Sampled data used for plotting}
+#'   \item{report_files}{List of paths to individual plot reports}
 #' @export
-plot_rate_distributions <- function(original_data, within_norm, full_norm) {
-  # Combine data with labels
-  plot_data <- rbind(
-    create_plot_df(original_data, "Original"),
-    create_plot_df(within_norm, "Within-group normalized"),
-    create_plot_df(full_norm, "Fully normalized")
-  )
+#' @importFrom ggplot2 theme_minimal
+#' @importFrom grDevices pdf dev.off
+#' @importFrom grid grid.newpage grid.text gpar
+#' @importFrom patchwork wrap_plots
+visualize_normalization <- function(data_list,
+                                    stages = names(data_list),
+                                    plots = c("density", "qq", "ma", "boxplot", "correlation"),
+                                    sample_size = 100000,
+                                    output_file = NULL,
+                                    output_dir = NULL,
+                                    theme = theme_minimal()) {
 
-  ggplot(plot_data, aes(x = rate, color = sample)) +
-    geom_density() +
-    facet_wrap(~stage) +
-    theme_minimal() +
-    labs(title = "Distribution of methylation rates",
-         x = "Methylation rate",
-         y = "Density")
-}
-
-
-#' Create enhanced QQ comparison plots with density information
-#' @param original_data Original data list
-#' @param within_norm Within-group normalized data
-#' @param full_norm Fully normalized data
-#' @param color_scheme Color scheme for density plot ("magma", "viridis", "plasma", "inferno")
-#' @param bins Number of hexagonal bins (default = 50)
-#' @param sample_size Optional sampling size (NULL for full dataset)
-#' @param seed Random seed for reproducibility (default = 42,
-#'        the answer to life, the universe, and everything)
-#' @return A ggplot object showing sample comparisons with density information
-#' @export
-plot_qq_comparison <- function(original_data, within_norm, full_norm,
-                               color_scheme = "magma",
-                               bins = 50,
-                               sample_size = NULL,
-                               seed = 42) {
-  # Helper function to create QQ data
-  create_qq_data <- function(data_list, stage) {
-    df <- do.call(rbind, lapply(names(data_list), function(group) {
-      samples <- names(data_list[[group]])
-      if(length(samples) >= 2) {
-        data.frame(
-          sample1_rate = data_list[[group]][[samples[1]]]$rate,
-          sample2_rate = data_list[[group]][[samples[2]]]$rate,
-          group = group,
-          stage = stage
-        )
-      }
-    }))
-    df$stage <- factor(df$stage,
-                       levels = c("Original",
-                                  "Within-group normalized",
-                                  "Fully normalized"))
-    return(df)
+  # Validation
+  if (!is.list(data_list)) {
+    stop("data_list must be a list of methylation data")
   }
 
-  # Optional sampling
-  if(!is.null(sample_size)) {
-    sampled <- sample_for_visualization(original_data, within_norm, full_norm,
-                                        n_sites = sample_size, seed = seed)
-    original_data <- sampled$original
-    within_norm <- sampled$within_norm
-    full_norm <- sampled$full_norm
+  if (length(data_list) == 0) {
+    stop("data_list is empty")
   }
 
-  plot_data <- rbind(
-    create_qq_data(original_data, "Original"),
-    create_qq_data(within_norm, "Within-group normalized"),
-    create_qq_data(full_norm, "Fully normalized")
-  )
-
-  ggplot(plot_data, aes(x = sample1_rate, y = sample2_rate)) +
-    geom_hex(bins = bins) +
-    geom_abline(color = "red", linetype = "dashed") +
-    facet_grid(group ~ stage) +
-    scale_fill_viridis_c(
-      option = color_scheme,
-      name = "Number of\ndata points",
-      labels = scales::comma,
-      guide = guide_colorbar(
-        title.position = "top",
-        barwidth = 3.5,     # Increased width
-        barheight = 10,   # Increased height
-        title.hjust = 0.5,
-        label.position = "right",
-        ticks.linewidth = 1
-      )
-    ) +
-    theme_minimal() +
-    theme(
-      legend.position = "right",
-      legend.title = element_text(size = 10),
-      legend.text = element_text(size = 8),
-      legend.key.height = unit(2, "cm"),  # Explicitly set legend height
-      legend.key.width = unit(1, "cm"),   # Explicitly set legend width
-      plot.title = element_text(hjust = 0.5),
-      strip.text = element_text(size = 10),
-      axis.title = element_text(size = 10),
-      axis.text = element_text(size = 8)
-    ) +
-    labs(title = "Sample-to-sample comparison",
-         subtitle = paste0("Density shown using ", bins, " bins"),
-         x = "Sample 1 methylation rate",
-         y = "Sample 2 methylation rate")
-}
-
-
-#' Function to visualize differences vs average (MA plot)
-#' @param original_data Original data list before normalization
-#' @param within_norm Data after within-group normalization
-#' @param full_norm Data after both normalizations
-#' @return A ggplot object showing MA plots
-#' @export
-plot_ma <- function(original_data, within_norm, full_norm,
-                    max_points = 100000) {
-create_ma_data <- function(data_list, stage) {
-  df <- do.call(rbind, lapply(names(data_list), function(group) {
-    samples <- names(data_list[[group]])
-    if(length(samples) >= 2) {
-      rates1 <- data_list[[group]][[samples[1]]]$rate
-      rates2 <- data_list[[group]][[samples[2]]]$rate
-      data.frame(
-        mean_rate = (rates1 + rates2) / 2,
-        rate_diff = rates1 - rates2,
-        group = group,
-        stage = stage
-      )
+  if (is.null(stages) || length(stages) == 0) {
+    stages <- if (!is.null(names(data_list)) && all(names(data_list) != "")) {
+      names(data_list)
+    } else {
+      paste("Stage", seq_along(data_list))
     }
-  }))
-  df$stage <- factor(df$stage,
-                     levels = c("Original",
-                                "Within-group normalized",
-                                "Fully normalized"))
-  return(df)
-}
-
-  plot_data <- rbind(
-    create_ma_data(original_data, "Original"),
-    create_ma_data(within_norm, "Within-group normalized"),
-    create_ma_data(full_norm, "Fully normalized")
-  )
-
-  ggplot(plot_data, aes(x = mean_rate, y = rate_diff)) +
-    geom_hex(bins = 50) +
-    geom_hline(yintercept = 0, color = "red") +
-    facet_grid(group ~ stage) +
-    scale_fill_viridis_c(option = "magma") +
-    theme_minimal() +
-    labs(title = "MA plot: Difference vs Average",
-         x = "Mean rate",
-         y = "Rate difference")
-}
-
-#' Function to visualize distribution changes as Box plots
-#' @param original_data Original data list before normalization
-#' @param within_norm Data after within-group normalization
-#' @param full_norm Data after both normalizations
-#' @return A ggplot object showing boxplots
-#' @export
-plot_boxplots <- function(original_data, within_norm, full_norm) {
-  create_box_data <- function(data_list, stage) {
-    df <- do.call(rbind, lapply(names(data_list), function(group) {
-      samples <- names(data_list[[group]])
-      if(length(samples) >= 2) {
-        rates1 <- data_list[[group]][[samples[1]]]$rate
-        rates2 <- data_list[[group]][[samples[2]]]$rate
-        data.frame(
-          mean_rate = (rates1 + rates2) / 2,
-          rate_diff = rates1 - rates2,
-          group = group,
-          stage = stage
-        )
-      }
-    }))
-    df$stage <- factor(df$stage,
-                       levels = c("Original",
-                                  "Within-group normalized",
-                                  "Fully normalized"))
-    return(df)
-  }
-  plot_data <- rbind(
-    create_plot_df(original_data, "Original"),
-    create_plot_df(within_norm, "Within-group normalized"),
-    create_plot_df(full_norm, "Fully normalized")
-  )
-
-  ggplot(plot_data, aes(x = sample, y = rate, fill = group)) +
-    geom_boxplot() +
-    facet_wrap(~stage) +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    labs(title = "Distribution of rates by sample",
-         x = "Sample",
-         y = "Rate")
-}
-
-
-#' Create helper function for single group QQ comparison
-#' @param original_data Original data list
-#' @param within_norm Within-group normalized data
-#' @param full_norm Fully normalized data
-#' @param color_scheme Color scheme for density plot ("magma", "viridis", "plasma", "inferno")
-#' @param bins Number of hexagonal bins (default = 50)
-#' @return A ggplot object showing sample comparisons with density information
-#' @keywords internal
-plot_qq_comparison_single_group <- function(original, normalized, group_name,
-                                            color_scheme = "magma",
-                                            bins = 50) {
-  # Get all pairwise comparisons for this group
-  create_qq_data_single <- function(data, stage) {
-    samples <- names(data)
-    pairs <- combn(samples, 2, simplify = FALSE)
-    do.call(rbind, lapply(pairs, function(pair) {
-      data.frame(
-        sample1_rate = data[[pair[1]]]$rate,
-        sample2_rate = data[[pair[2]]]$rate,
-        pair = paste(pair[1], "vs", pair[2]),
-        stage = stage
-      )
-    }))
   }
 
-  plot_data <- rbind(
-    create_qq_data_single(original, "Original"),
-    create_qq_data_single(normalized, "Normalized")
-  )
+  if (length(stages) != length(data_list)) {
+    stop("Length of stages must match length of data_list")
+  }
 
-  # Set the order explicitly
-  plot_data$stage <- factor(plot_data$stage,
-                            levels = c("Original",
-                                       "Within-group normalized"))
 
-  ggplot(plot_data, aes(x = sample1_rate, y = sample2_rate)) +
-    geom_hex(bins = bins) +
-    geom_abline(color = "red", linetype = "dashed") +
-    facet_grid(pair ~ stage) +
-    scale_fill_viridis_c(
-      option = color_scheme,
-      name = "Number of\ndata points",
-      labels = scales::comma,
-      guide = guide_colorbar(
-        title.position = "top",
-        barwidth = 1.5,
-        barheight = 10
-      )
-    ) +
-    theme_minimal() +
-    theme(
-      legend.position = "right",
-      legend.key.height = unit(2, "cm"),
-      legend.key.width = unit(1, "cm"),
-      strip.text = element_text(size = 8),
-      plot.title = element_text(hjust = 0.5)
-    ) +
-    labs(title = paste("Sample comparisons -", group_name),
-         x = "Sample 1 methylation rate",
-         y = "Sample 2 methylation rate")
-}
+  # Determine output directory
+  if (is.null(output_dir)) {
+    if (!is.null(output_file)) {
+      output_dir <- dirname(output_file)
+    } else {
+      output_dir <- getwd()
+    }
+  }
 
-#' Create within-group normalization report
-#' @param original_data Original data list
-#' @param normalized_data After within-group normalization
-#' @param group_names Vector of group names
-#' @param output_file Optional file path to save report
-#' @param color_scheme Color scheme for density plots
-#' @param bins Number of hexagonal bins
-#' @return A list containing both plot arrangements
-#' @export
-plot_within_group_report <- function(original_data, normalized_data,
-                                     group_names,
-                                     output_file = NULL,
-                                     color_scheme = "magma",
-                                     bins = 50) {
+  # Ensure output directory exists
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+    message("Created output directory: ", output_dir)
+  }
 
-  # Create plots for each group
-  plots <- lapply(seq_along(group_names), function(i) {
-    group <- group_names[i]
+  # Fix any double slashes in paths
+  if (!is.null(output_dir)) {
+    output_dir <- gsub("//", "/", output_dir)
+    output_dir <- gsub("\\\\\\\\", "\\\\", output_dir)
+  }
 
-    # QQ comparison plot
-    p1 <- plot_qq_comparison_single_group(
-      original_data[[i]],
-      normalized_data[[i]],
-      group_name = group,
-      color_scheme = color_scheme,
-      bins = bins
-    )
-
-    # Distribution plot
-    plot_data <- rbind(
-      create_plot_df(original_data[[i]], "Original", group),
-      create_plot_df(normalized_data[[i]], "Within-group normalized", group)
-    )
-
-    # Set the order explicitly
-    plot_data$stage <- factor(plot_data$stage,
-                              levels = c("Original",
-                                         "Within-group normalized"))
-
-    p2 <- ggplot(plot_data, aes(x = rate, color = sample)) +
-      geom_density() +
-      facet_wrap(~stage) +
-      theme_minimal() +
-      labs(title = paste("Rate distributions -", group),
-           x = "Methylation rate",
-           y = "Density")
-
-    list(qq = p1, dist = p2)
+  # Sample and prepare data
+  sampled_data <- tryCatch({
+    .sample_data_for_visualization(data_list, stages, sample_size)
+  }, error = function(e) {
+    message("Error in data preparation: ", e$message)
+    return(NULL)
   })
 
-  # Separate QQ and distribution plots
-  qq_plots <- lapply(plots, function(x) x$qq)
-  dist_plots <- lapply(plots, function(x) x$dist)
-
-  # Create two separate arrangements
-  qq_page <- gridExtra::grid.arrange(
-    grobs = qq_plots,
-    ncol = 2,
-    top = "Within-group normalization: Sample comparisons"
-  )
-
-  dist_page <- gridExtra::grid.arrange(
-    grobs = dist_plots,
-    ncol = 2,
-    top = "Within-group normalization: Rate distributions"
-  )
-
-  if (!is.null(output_file)) {
-    # Save as multi-page PDF
-    pdf(output_file, width = 15, height = 5 * ceiling(length(group_names)/2))
-    grid::grid.draw(qq_page)
-    grid::grid.newpage()
-    grid::grid.draw(dist_page)
-    dev.off()
+  # Stop if data preparation failed
+  if (is.null(sampled_data)) {
+    stop("Failed to prepare data for visualization. Check that your data structure is correct.")
   }
 
-  # Return both arrangements
-  return(list(qq_page = qq_page, dist_page = dist_page))
-}
+  # Create requested plots
+  plot_objects <- list()
+  report_files <- list()
 
-#' Create distribution data for group comparisons
-#' @param data_list List of methylation data
-#' @param stage Label for normalization stage
-#' @param group_names Vector of group names
-#' @return Data frame with methylation rates and group information
-#' @keywords internal
-create_group_dist_data <- function(data_list, stage, group_names) {
-  do.call(rbind, lapply(seq_along(group_names), function(i) {
-    group <- group_names[i]
-    # Keep individual sample rates
-    do.call(rbind, lapply(names(data_list[[i]]), function(sample) {
-      data.frame(
-        rate = data_list[[i]][[sample]]$rate,
-        sample = sample,
-        group = group,
-        stage = stage
-      )
-    }))
-  }))
-}
+  # Create plots for each requested type
+  for (plot_type in plots) {
+    plot_result <- switch(
+      plot_type,
+      density = .create_density_plot(sampled_data, stages, theme, output_dir),
+      qq = .create_qq_plot(sampled_data, stages, theme, output_dir),
+      ma = .create_ma_plot(sampled_data, stages, theme, output_dir),
+      boxplot = .create_boxplot(sampled_data, stages, theme, output_dir),
+      correlation = .create_correlation_plot(sampled_data, stages, theme, output_dir)
+    )
 
-#' Create between-group normalization report
-#' @param within_norm After within-group normalization
-#' @param full_norm After both normalizations
-#' @param group_names Vector of group names
-#' @param output_file Optional file path to save report
-#' @param color_scheme Color scheme for density plots
-#' @param bins Number of hexagonal bins
-#' @return A grid arrangement of diagnostic plots
-#' @export
-plot_between_group_report <- function(within_norm, full_norm,
-                                      group_names,
-                                      output_file = NULL,
-                                      color_scheme = "magma",
-                                      bins = 50) {
+    if (!is.null(plot_result$plot)) {
+      plot_objects[[plot_type]] <- plot_result$plot
+      if (!is.null(plot_result$report_file)) {
+        report_files[[plot_type]] <- plot_result$report_file
+      }
+    } else {
+      message("Failed to create ", plot_type, " plot")
+    }
+  }
 
-  # Calculate group means for comparison
-  calculate_group_means <- function(data_list, groups) {
-    means_list <- lapply(seq_along(groups), function(i) {
-      rates <- do.call(cbind, lapply(data_list[[i]], function(df) df$rate))
-      rowMeans(rates)
+  # Create combined report if multiple plots and output_file is specified
+  combined_report <- NULL
+  if (length(plot_objects) > 0 && !is.null(output_file)) {
+    tryCatch({
+      layout <- .get_optimal_layout(names(plot_objects))
+      if (requireNamespace("patchwork", quietly = TRUE)) {
+        combined_report <- patchwork::wrap_plots(plot_objects, ncol = layout$ncol, nrow = layout$nrow)
+      } else {
+        combined_report <- plot_objects[[1]]
+        message("patchwork not available; returning first plot")
+      }
+
+      # Save combined report to PDF
+      pdf(output_file, width = 12, height = 10)
+      grid::grid.newpage()
+      grid::grid.text("Methylation Normalization Report",
+                      x = 0.5, y = 0.8,
+                      gp = grid::gpar(fontsize = 24, fontface = "bold"))
+      grid::grid.text(paste("Plots:", paste(names(plot_objects), collapse = ", ")),
+                      x = 0.5, y = 0.6,
+                      gp = grid::gpar(fontsize = 16))
+      grid::grid.text(paste("Generated on:", Sys.Date()),
+                      x = 0.5, y = 0.4,
+                      gp = grid::gpar(fontsize = 14))
+      print(combined_report)
+      dev.off()
+      message("Combined report saved to ", output_file)
+    }, error = function(e) {
+      message("Error saving combined report: ", e$message)
     })
-    names(means_list) <- groups
-    means_list
   }
 
-  # Create plots
-  # 1. Group mean distributions
-  plot_data_dist <- rbind(
-    create_group_dist_data(within_norm, "Before between-group norm", group_names),
-    create_group_dist_data(full_norm, "After between-group norm", group_names)
-  )
-
-  plot_data_dist$stage <- factor(plot_data_dist$stage,
-                                 levels = c("Before between-group norm",
-                                            "After between-group norm"))
-
-  p1 <- ggplot(plot_data_dist, aes(x = rate, color = group)) +
-    geom_density() +
-    facet_wrap(~stage) +
-    theme_minimal() +
-    labs(title = "Distribution of methylation rates by group",
-         x = "Methylation rate",
-         y = "Density")
-
-  # 2. Group means comparison
-  means_before <- calculate_group_means(within_norm, group_names)
-  means_after <- calculate_group_means(full_norm, group_names)
-
-  plot_data_means <- data.frame(
-    mean_before = unlist(means_before),
-    mean_after = unlist(means_after),
-    group = rep(group_names, each = length(means_before[[1]]))
-  )
-
-  p2 <- ggplot(plot_data_means, aes(x = mean_before, y = mean_after)) +
-    geom_hex(bins = bins) +
-    geom_abline(color = "red", linetype = "dashed") +
-    scale_fill_viridis_c(option = color_scheme) +
-    theme_minimal() +
-    labs(title = "Group means before vs after normalization",
-         x = "Mean rate before",
-         y = "Mean rate after")
-
-  # 3. Boxplots by group
-  plot_data_box <- rbind(
-    create_plot_df_groups(within_norm, "Before between-group norm", group_names),
-    create_plot_df_groups(full_norm, "After between-group norm", group_names)
-  )
-
-  plot_data_box$stage <- factor(plot_data_box$stage,
-                                levels = c("Before between-group norm",
-                                           "After between-group norm"))
-
-  p3 <- ggplot(plot_data_box, aes(x = group, y = rate, fill = group)) +
-    geom_boxplot() +
-    facet_wrap(~stage) +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    labs(title = "Distribution of rates by group",
-         x = "Group",
-         y = "Rate")
-
-  # Combine plots
-  combined <- gridExtra::grid.arrange(p1, p2, p3,
-                                      ncol = 2,
-                                      top = "Between-group normalization effects")
-
-  if (!is.null(output_file)) {
-    ggsave(output_file, combined, width = 15, height = 10)
-  }
-
-  return(combined)
+  return(list(
+    plots = plot_objects,
+    combined = combined_report,
+    data = sampled_data,
+    report_files = report_files
+  ))
 }
 

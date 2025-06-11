@@ -2,10 +2,10 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 readMethylationFile <- function(filename) {
-    .Call(`_MAPitNorm_readMethylationFile`, filename)
+    .Call('_MAPitNorm_readMethylationFile', PACKAGE = 'MAPitNorm', filename)
 }
 
 readMethylationFiles <- function(filenames) {
-    .Call(`_MAPitNorm_readMethylationFiles`, filenames)
+    .Call('_MAPitNorm_readMethylationFiles', PACKAGE = 'MAPitNorm', filenames)
 }
 
