@@ -10,7 +10,8 @@ load_data(
   type = NULL,
   groups = NULL,
   cores = 1,
-  use_cpp = TRUE
+  use_cpp = TRUE,
+  single_file = NULL
 )
 }
 \arguments{
@@ -30,9 +31,13 @@ all groups will be loaded.}
 
 \item{use_cpp}{Logical, whether to use the C++ implementation for faster loading.
 Default is TRUE. Will fall back to R implementation if C++ is not available.}
+
+\item{single_file}{Optional path to a single methylation file to load directly
+When provided, the sample_sheet parameter is ignored.}
 }
 \value{
-A list of data.tables containing processed methylation data.
+A list of data.tables containing processed methylation data, or a
+single data.table if single_file is provided.
 }
 \description{
 Load methylation data from files based on a sample sheet.

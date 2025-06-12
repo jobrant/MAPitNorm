@@ -2,7 +2,7 @@
 % Please edit documentation in R/plotting_utils.R
 \name{.sample_data_for_visualization}
 \alias{.sample_data_for_visualization}
-\title{Internal Visualization Utility Functions}
+\title{Prepare and sample methylation data for visualization}
 \usage{
 .sample_data_for_visualization(
   data_list,
@@ -24,7 +24,6 @@
 Data frame for plotting
 }
 \description{
-This file contains internal utility functions for visualization.
 Prepare and sample methylation data for visualization
 }
 \keyword{internal}

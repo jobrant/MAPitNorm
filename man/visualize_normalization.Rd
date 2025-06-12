@@ -41,7 +41,11 @@ visualize_normalization(
 \item{theme}{ggplot2 theme to use apply (defaults to theme_minimual()).}
 }
 \value{
-A list containing plot objects, combined report, and sampled data
+A list containing:
+\item{plots}{List of ggplot objects}
+\item{combined}{Combined plot (if output_file specified)}
+\item{data}{Sampled data used for plotting}
+\item{report_files}{List of paths to individual plot reports}
 
 A grid arrangement of four diagnostic plots
 }
