@@ -13,15 +13,40 @@
 #'   (no parallel processing).
 #' @param use_cpp Logical, whether to use the C++ implementation for faster loading.
 #'   Default is TRUE. Will fall back to R implementation if C++ is not available.
-#'
-#' @return A list of data.tables containing processed methylation data.
+#' @param single_file Optional path to a single methylation file to load directly
+#'   When provided, the sample_sheet parameter is ignored.
+#' @return A list of data.tables containing processed methylation data, or a
+#'    single data.table if single_file is provided.
 #'
 #' @importFrom data.table fread setnames := is.data.table as.data.table rbindlist
 #' @importFrom methods is
-#'
+#' @importFrom Rcpp evalCpp
 #' @export
+#' @useDynLib MAPitNorm, .registration = TRUE
 load_data <- function(dir_path, sample_sheet, type = NULL, groups = NULL,
-                      cores = 1, use_cpp = TRUE) {
+                      cores = 1, use_cpp = TRUE, single_file = NULL) {
+
+  # Handle single file case
+  if (!is.null(single_file)) {
+    if (!missing(sample_sheet)) {
+      message("Ignoring sample_sheet parameter since single_file is provided")
+    }
+
+    # If single_file is a path relative to dir_path, construct the full path
+    if (missing(dir_path) || is.null(dir_path)) {
+      file_path <- single_file
+    } else {
+      file_path <- file.path(dir_path, single_file)
+    }
+
+    return(load_single_file(file_path, use_cpp = use_cpp))
+  }
+
+  # If we reach here, we're loading multiple files
+
+  if (is.null(sample_sheet)) {
+    stop("sample_sheet must be provided when not using single_file")
+  }
 
   # Load sample sheet
   sample_data <- .load_sample_sheet(sample_sheet)
