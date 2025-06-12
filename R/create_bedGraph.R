@@ -11,7 +11,8 @@
 #' @param out Directory to write output bedGraph files to. Default is current working directory.
 #' @param group_name Name of the group (optional)
 #' @param sample_name Name to use for output file (optional)
-#'
+#' @param use_cpp Logical. Should function be performed on all files in object.
+#'        Default is TRUE. Will fall back to R implementation if C++ is not available.
 #' @details
 #' Converts methylation data to bedGraph format. Can handle multiple input types:
 #' - If given a normalized data object (list of lists), processes all samples by default
@@ -25,7 +26,23 @@ create_bedgraph <- function(data,
                             all = TRUE,
                             out = ".",
                             group_name = NULL,
-                            sample_name = NULL) {
+                            sample_name = NULL,
+                            use_cpp = TRUE) {
+
+  # Determine whether to use C++ implementation
+  has_rcpp <- requireNamespace("Rcpp", quietly = TRUE) &&
+    exists("createBedgraphCpp", mode = "function")
+
+  use_cpp_impl <- use_cpp && has_rcpp
+
+  if (use_cpp && !has_rcpp) {
+    message("Rcpp package not available. Using R implementation.")
+    message("For faster processing, install the Rcpp package.")
+    use_cpp_impl <- FALSE
+  }
+
+  # Store implementation choice for processing functions
+  .options <- list(use_cpp_impl = use_cpp_impl)
 
   # Match and check type argument
   type <- match.arg(type)
@@ -72,113 +89,3 @@ create_bedgraph <- function(data,
     stop("Invalid input type. Must be either a file path, data frame, or list of samples")
   }
 }
-
-
-#' Process a single methylation file into bedGraph format
-#' @param file_path Path to methylation file
-#' @param type Type of bedGraph to create ("meth" or "cov")
-#' @param out Output directory path
-#' @param sample_name Name of the sample (optional).
-#' @return Path to created bedGraph file
-#' @keywords internal
-process_single_file <- function(file_path, type, out, sample_name = NULL) {
-  # Load and process file
-  data <- read_methylation_file(file_path)  # You'll need to implement this
-  process_single_sample(data, type, out, sample_name = sample_name)
-}
-
-
-#' Process a single sample data frame into bedGraph format
-#' @param sample_df Data frame containing methylation data
-#' @param type Type of bedGraph to create ("meth" or "cov")
-#' @param out Output directory path
-#' @param group_name Name of group (optional).
-#' @param sample_name Name of the sample (optional).
-#' @importFrom data.table fwrite
-#' @return Path to created bedGraph file
-#' @keywords internal
-process_single_sample <- function(sample_df, type, out, group_name = NULL, sample_name = NULL) {
-  # Convert to bedGraph format
-  bg_data <- data.table::data.table(
-    chr = paste0("chr", sample_df$chr),
-    start = sample_df$pos - 1,  # BED format is 0-based
-    end = sample_df$pos,
-    value = if(type == "meth") sample_df$rate else sample_df$cov
-  )
-
-  # Create output filename
-  if(is.null(sample_name)) {
-    file_prefix <- "sample"
-    sample_name <- basename(tempfile())
-  } else {
-    file_prefix <- if(is.null(group_name)) sample_name else paste(group_name, sample_name, sep="_")
-  }
-
-  out_file <- file.path(out, paste0(file_prefix, "_", type, ".bedGraph"))
-
-  data.table::fwrite(bg_data, out_file,
-                     sep = "\t",
-                     quote = FALSE,
-                     col.names = FALSE,
-                     scipen = 999
-  )
-
-  return(out_file)
-}
-
-
-#' Process all samples in a data list into bedGraph format
-#' @param data_list List of lists containing methylation data
-#' @param type Type of bedGraph to create ("rate" or "cov")
-#' @param out Output directory path
-#' @return Vector of paths to created bedGraph files
-#' @keywords internal
-process_all_samples <- function(data_list, type, out) {
-  out_files <- lapply(names(data_list), function(group) {
-    lapply(names(data_list[[group]]), function(sample) {
-      process_single_sample(
-        sample_df = data_list[[group]][[sample]],
-        type = type,
-        out = out,
-        group_name = group,
-        sample_name = sample
-      )
-    })
-  })
-
-  return(unlist(out_files))
-}
-
-
-
-#' Reads single methylation data file
-#' @param file_path Path to methylation file
-#'
-#' @return data.table containing methylation data
-#'
-#' @importFrom progress progress_bar
-#' @importFrom data.table fread setnames :=
-#'
-#' @keywords internal
-read_methylation_file <- function(file_path) {
-  cols_needed <- c("chr", "pos", "strand", "site", "mc", "cov")
-  pb <- progress::progress_bar$new(
-    format = "  Loading [:bar] :percent in :elapsed",
-    total = length(1),
-    clear = FALSE
-  )
-  pb$tick()
-  df <- data.table::fread(
-    file_path,
-    select = 1:6,
-    showProgress = FALSE
-  )
-  data.table::setnames(df, cols_needed)
-  df[, ":="(
-    rate = mc/cov,
-    uniqueID = paste(chr, pos, site, sep="_")
-  )]
-  return(df)
-}
-
-
