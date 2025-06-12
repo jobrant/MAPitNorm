@@ -51,6 +51,12 @@ hcg_samples <- load_data(
   type = "HCG",
   use_cpp = FALSE
 )
+
+# Load a single file
+single_data <- load_single_file(
+  single_file = "path/to/methylation_file.gz"
+)
+
 ```
 ### Normalization Process
 
