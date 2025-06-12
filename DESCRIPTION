@@ -18,12 +18,12 @@ Imports:
     methods,
     progress,
     purrr,
+    Rcpp,
     scales,
     stats,
     utils,
     viridis
 Suggests:
-    Rcpp,
     cowplot,
     stringr,
     tools
