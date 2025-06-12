@@ -54,7 +54,7 @@ hcg_samples <- load_data(
 
 # Load a single file
 single_data <- load_single_file(
-  "path/to/methylation_file.gz"
+  single_file = "path/to/methylation_file.gz"
 )
 
 ```
