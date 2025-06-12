@@ -1,3 +1,6 @@
+## To Do: Use this function and usage snippet to reduce redundancies in loading functions ###
+
+
 #' Extract group names from data
 #' @param data_list A list of methylation data
 #' @param diagnostics Whether to print diagnostic messages
