@@ -29,21 +29,6 @@ create_bedgraph <- function(data,
                             sample_name = NULL,
                             use_cpp = TRUE) {
 
-  # Determine whether to use C++ implementation
-  has_rcpp <- requireNamespace("Rcpp", quietly = TRUE) &&
-    exists("createBedgraphCpp", mode = "function")
-
-  use_cpp_impl <- use_cpp && has_rcpp
-
-  if (use_cpp && !has_rcpp) {
-    message("Rcpp package not available. Using R implementation.")
-    message("For faster processing, install the Rcpp package.")
-    use_cpp_impl <- FALSE
-  }
-
-  # Store implementation choice for processing functions
-  .options <- list(use_cpp_impl = use_cpp_impl)
-
   # Match and check type argument
   type <- match.arg(type)
 
@@ -53,21 +38,37 @@ create_bedgraph <- function(data,
     dir.create(out, recursive = TRUE)
   }
 
-  # Handle different input types
+  # Determine C++ implementation availability
+  has_rcpp <- requireNamespace("Rcpp", quietly = TRUE) &&
+    is.function(get("createBedgraphCpp", envir = asNamespace("MAPitNorm")))
+
+  use_cpp_impl <- use_cpp && has_rcpp
+
+  if (use_cpp && !has_rcpp) {
+    message("Rcpp or createBedgraphCpp not available. Using R implementation.")
+    message("For faster processing, ensure Rcpp is installed and createBedgraphCpp is exported.")
+    use_cpp_impl <- FALSE
+  }
+
+  # Store implementation choice
+  .options <- list(use_cpp_impl = use_cpp_impl)
+
+    # Handle different input types
   if (is.character(data)) {
     # Input is a file path
     if (!file.exists(data)) {
       stop("Input file does not exist: ", data)
     }
     sample_name <- if(is.null(sample_name)) basename(data) else sample_name
-    return(process_single_file(data, type, out, sample_name))
+    return(process_single_file(data, type, out, sample_name, .options))
 
   } else if (is.data.frame(data)) {
     # Input is a single sample
     return(process_single_sample(sample_df = data,
                                  type = type,
                                  out = out,
-                                 sample_name = sample_name))
+                                 sample_name = sample_name,
+                                 .options = .options))
 
   } else if (is.list(data)) {
     # Check if it's a nested list (list of lists)
@@ -78,10 +79,11 @@ create_bedgraph <- function(data,
         group_name <- sub(".*\\$", "", group_name)  # Extract just the group name
         return(process_single_sample(data, type, out,
                                      group_name = group_name,
-                                     sample_name = sample_name))
+                                     sample_name = sample_name,
+                                     .options = .options))
       }
       # Full list of lists
-      return(process_all_samples(data, type, out))
+      return(process_all_samples(data, type, out, .options))
     } else {
       stop("When 'all=FALSE', input should be a single sample or file path")
     }
