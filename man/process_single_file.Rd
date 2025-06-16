@@ -4,7 +4,13 @@
 \alias{process_single_file}
 \title{Process a single methylation file into bedGraph format}
 \usage{
-process_single_file(file_path, type, out, sample_name = NULL)
+process_single_file(
+  file_path,
+  type,
+  out,
+  sample_name = NULL,
+  .options = list(use_cpp_impl = TRUE)
+)
 }
 \arguments{
 \item{file_path}{Path to methylation file}

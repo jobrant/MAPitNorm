@@ -443,10 +443,31 @@
 #' @param sample_name Name of the sample (optional).
 #' @return Path to created bedGraph file
 #' @keywords internal
-process_single_file <- function(file_path, type, out, sample_name = NULL) {
+process_single_file <- function(file_path, type, out, sample_name = NULL,
+                                .options = list(use_cpp_impl = TRUE)) {
+
+  # Validate file path
+  if (!file.exists(file_path)) {
+    stop("Input file does not exist: ", file_path)
+  }
+
   # Load and process file
-  data <- read_methylation_file(file_path)
-  process_single_sample(data, type, out, sample_name = sample_name)
+  data <- load_data(single_file = file_path)
+
+  # Ensure required columns
+  required_cols <- c("chr", "pos", "rate", "cov")
+  if (!all(required_cols %in% names(data))) {
+    stop("Loaded data missing required columns: ",
+         paste(setdiff(required_cols, names(data)), collapse = ", "))
+  }
+
+  # Ensure correct column types
+  data$chr <- as.character(data$chr)
+  data$pos <- as.integer(data$pos)
+  data$rate <- as.numeric(data$rate)
+  data$cov <- as.integer(data$cov)
+
+  process_single_sample(data, type, out, sample_name = sample_name, .options = .options)
 }
 
 
@@ -473,8 +494,28 @@ process_single_sample <- function(sample_df, type, out, group_name = NULL,
 #' Process a single sample using C++ implementation
 #' @keywords internal
 process_single_sample_cpp <- function(sample_df, type, out, group_name = NULL, sample_name = NULL) {
-  out_file <- createBedgraphCpp(sample_df, type, out, group_name, sample_name)
-  return(out_file)
+  # Validate input data frame
+  required_cols <- c("chr", "pos", "rate", "cov")
+  if (!all(required_cols %in% names(sample_df))) {
+    stop("Input data frame missing required columns: ",
+         paste(setdiff(required_cols, names(sample_df)), collapse = ", "))
+  }
+
+  # Ensure correct types
+  sample_df$chr <- as.character(sample_df$chr)
+  sample_df$pos <- as.integer(sample_df$pos)
+  sample_df$rate <- as.numeric(sample_df$rate)
+  sample_df$cov <- as.integer(sample_df$cov)
+
+  tryCatch({
+    out_file <- createBedgraphCpp(sample_df, type, out, group_name, sample_name)
+    if (!file.exists(out_file)) {
+      stop("C++ implementation failed to create output file: ", out_file)
+    }
+    return(out_file)
+  }, error = function(e) {
+    stop("Error in C++ implementation: ", conditionMessage(e))
+  })
 }
 
 #' Process a single sample using R implementation
@@ -545,6 +586,7 @@ process_all_samples <- function(data_list, type, out,
 #'
 #' @keywords internal
 read_methylation_file <- function(file_path) {
+  warning("read_methylation_file is deprecated; use load_data(single_file = file_path) instead.")
   cols_needed <- c("chr", "pos", "strand", "site", "mc", "cov")
   pb <- progress::progress_bar$new(
     format = "  Loading [:bar] :percent in :elapsed",
