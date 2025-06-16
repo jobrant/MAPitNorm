@@ -23,7 +23,7 @@
 #' @importFrom patchwork wrap_plots
 visualize_normalization <- function(data_list,
                                     stages = names(data_list),
-                                    plots = c("density", "qq", "ma", "boxplot", "correlation"),
+                                    plots = c("density", "qq"),
                                     sample_size = 100000,
                                     output_file = NULL,
                                     output_dir = NULL,
@@ -94,10 +94,10 @@ visualize_normalization <- function(data_list,
     plot_result <- switch(
       plot_type,
       density = .create_density_plot(sampled_data, stages, theme, output_dir),
-      qq = .create_qq_plot(sampled_data, stages, theme, output_dir),
-      ma = .create_ma_plot(sampled_data, stages, theme, output_dir),
-      boxplot = .create_boxplot(sampled_data, stages, theme, output_dir),
-      correlation = .create_correlation_plot(sampled_data, stages, theme, output_dir)
+      qq = .create_qq_plot(sampled_data, stages, theme, output_dir)
+      # ma = .create_ma_plot(sampled_data, stages, theme, output_dir),
+      # boxplot = .create_boxplot(sampled_data, stages, theme, output_dir),
+      # correlation = .create_correlation_plot(sampled_data, stages, theme, output_dir)
     )
 
     if (!is.null(plot_result$plot)) {
