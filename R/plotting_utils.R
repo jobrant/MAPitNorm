@@ -3,16 +3,16 @@
 #' @name visualization-utils
 #' @importFrom grDevices pdf dev.off
 #' @importFrom grid grid.newpage grid.text gpar
-#' @importFrom utils combn
+#' @importFrom utils combn head
 #' @importFrom stats aggregate na.omit
 #' @importFrom reshape2 dcast
 #' @importFrom patchwork wrap_plots
-#' @importFrom ggplot2 ggplot aes aes_string geom_point geom_abline
-#' geom_density geom_hex geom_bar facet_wrap labs theme theme_minimal
-#' element_text scale_fill_viridis_c
-#' @importFrom viridisLite viridis
+#' @importFrom viridis viridis
+#' @importFrom ggplot2 ggplot aes geom_point geom_abline
+#' geom_density geom_hex geom_bar facet_wrap labs theme theme_minimal element_text
 NULL
 
+utils::globalVariables(c(".data"))
 
 # Data Preparation Functions ----------------------------------------------
 
@@ -290,7 +290,7 @@ NULL
                subtitle = pair_name,
                x = pair[1],
                y = pair[2]) +
-          scale_fill_viridis_c(option = "magma") +
+          viridis::scale_fill_viridis_c(option = "magma") +
           theme
 
         # Add to list
@@ -328,7 +328,7 @@ NULL
 
     comp_data <- reshape2::dcast(avg_data, group ~ stage, value.var = "rate")
 
-    p <- ggplot(comp_data, aes_string(x = stage1, y = stage2)) +
+    p <- ggplot(comp_data, aes(x = .data[[stage1]], y = .data[[stage2]])) +
       geom_point(aes(color = group), size = 3) +
       geom_abline(color = "red", linetype = "dashed") +
       labs(title = paste("Comparison:", stage1, "vs", stage2),
