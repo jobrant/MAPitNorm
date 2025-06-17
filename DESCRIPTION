@@ -14,18 +14,15 @@ Imports:
     ggplot2,
     grDevices,
     grid,
-    gridExtra,
     methods,
     patchwork,
     progress,
     purrr,
     Rcpp,
     reshape2,
-    scales,
     stats,
     utils,
-    viridis,
-    viridisLite
+    viridis
 Suggests:
     cowplot,
     stringr,
