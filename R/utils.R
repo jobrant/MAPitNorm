@@ -140,10 +140,10 @@
   # This ensures the package works even if these packages aren't loaded
   if (cores > 1 && requireNamespace("parallel", quietly = TRUE)) {
     # Use parallel processing
-    all_samples <- load_data_parallel(files.list, cores)
+    all_samples <- .load_data_parallel(files.list, cores)
   } else {
     # Use sequential processing with progress bar
-    all_samples <- load_data_sequential(files.list)
+    all_samples <- .load_data_sequential(files.list)
   }
 
   return(all_samples)
@@ -221,7 +221,7 @@
 
   all_samples <- lapply(files.list, function(file) {
     pb$tick()
-    load_single_file_r(file)
+    .load_single_file_r(file)
   })
 
   names(all_samples) <- names(files.list)
@@ -250,7 +250,7 @@
         NULL
       })
 
-      all_samples <- parallel::parLapply(cl, files.list, load_single_file_r)
+      all_samples <- parallel::parLapply(cl, files.list, .load_single_file_r)
       names(all_samples) <- names(files.list)
 
     }, error = function(e) {
@@ -262,7 +262,7 @@
 
   # If parallel processing failed, fall back to sequential
   if (is.null(all_samples)) {
-    all_samples <- load_data_sequential(files.list)
+    all_samples <- .load_data_sequential(files.list)
   }
 
   return(all_samples)

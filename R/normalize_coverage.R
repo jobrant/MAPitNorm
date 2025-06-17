@@ -27,6 +27,7 @@
 #' @importFrom data.table setDT copy := setDTthreads
 #' @importFrom purrr map2 transpose
 #' @importFrom parallel detectCores
+#' @importFrom utils head
 #'
 #' @export
 
