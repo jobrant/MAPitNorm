@@ -21,8 +21,7 @@ Imports:
     Rcpp,
     reshape2,
     stats,
-    utils,
-    viridis
+    utils
 Suggests:
     cowplot,
     stringr,

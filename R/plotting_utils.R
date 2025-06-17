@@ -7,8 +7,7 @@
 #' @importFrom stats aggregate na.omit
 #' @importFrom reshape2 dcast
 #' @importFrom patchwork wrap_plots
-#' @importFrom viridis viridis
-#' @importFrom ggplot2 ggplot aes geom_point geom_abline
+#' @importFrom ggplot2 ggplot scale_fill_viridis_c aes geom_point geom_abline
 #' geom_density geom_hex geom_bar facet_wrap labs theme theme_minimal element_text
 NULL
 
@@ -290,7 +289,7 @@ utils::globalVariables(c(".data"))
                subtitle = pair_name,
                x = pair[1],
                y = pair[2]) +
-          viridis::scale_fill_viridis_c(option = "magma") +
+          ggplot2::scale_fill_viridis_c(option = "magma") +
           theme
 
         # Add to list
