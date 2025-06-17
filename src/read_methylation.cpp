@@ -95,8 +95,9 @@ extern "C" {
   } 
 
   // [[Rcpp::export]]
-  RcppExport void testCpp() {
+  RcppExport std::string testCpp() {
     Rcout << "Test C++ function called successfully\n";
+    return "Success";
   }
 
 }

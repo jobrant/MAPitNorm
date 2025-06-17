@@ -48,7 +48,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // testCpp
-RcppExport void testCpp();
+RcppExport std::string testCpp();
 RcppExport SEXP _MAPitNorm_testCpp() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
