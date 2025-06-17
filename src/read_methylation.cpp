@@ -93,4 +93,11 @@ extern "C" {
     Rcout << "Exiting readMethylationFiles\n";
     return results;
   } 
+
+  // [[Rcpp::export]]
+  void testCpp() {
+    Rcout << "Test C++ function called successfully\n";
+  }
+
 }
+
