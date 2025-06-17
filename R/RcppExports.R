@@ -14,6 +14,6 @@ readMethylationFiles <- function(filenames) {
 }
 
 testCpp <- function() {
-    invisible(.Call(`_MAPitNorm_testCpp`))
+    .Call(`_MAPitNorm_testCpp`)
 }
 

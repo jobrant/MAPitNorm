@@ -14,7 +14,7 @@ std::vector<std::string> readGzippedLines(const char* filename) {
   }
   
   char buffer[1024];
-  while (gzgets(file, buffer, sizeof(buffer)) != Z_NULL) {
+  while (gzgets(file, buffer, sizeof(buffer)) != NULL) {
     lines.push_back(std::string(buffer));
   }
   
@@ -24,7 +24,7 @@ std::vector<std::string> readGzippedLines(const char* filename) {
 
 extern "C" {
   // [[Rcpp::export]]
-  DataFrame readMethylationFile(std::string filename) {
+  RcppExport DataFrame readMethylationFile(std::string filename) {
     Rcout << "Reading file: " << filename << "\n";
     // Read all lines from the gzipped file
     std::vector<std::string> lines = readGzippedLines(filename.c_str());
@@ -47,7 +47,7 @@ extern "C" {
       
       // Read tab-separated values
       if (std::getline(iss, chr_val, '\t') && 
-          (iss >> pos_val) && iss.ignore() &&
+          (iss >> pos_val) && iss.ignore(1, '\t') &&
           std::getline(iss, strand_val, '\t') &&
           std::getline(iss, site_val, '\t') &&
           (iss >> mc_val) && iss.ignore() &&
@@ -78,7 +78,7 @@ extern "C" {
 
 
   // [[Rcpp::export]]
-  List readMethylationFiles(CharacterVector filenames) {
+  RcppExport List readMethylationFiles(CharacterVector filenames) {
     Rcout << "Entering readMethylationFiles with " << filenames.size() << " files\n";
     int n_files = filenames.size();
     List results(n_files);
@@ -95,7 +95,7 @@ extern "C" {
   } 
 
   // [[Rcpp::export]]
-  void testCpp() {
+  RcppExport void testCpp() {
     Rcout << "Test C++ function called successfully\n";
   }
 

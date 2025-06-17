@@ -26,7 +26,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // readMethylationFile
-DataFrame readMethylationFile(std::string filename);
+RcppExport DataFrame readMethylationFile(std::string filename);
 RcppExport SEXP _MAPitNorm_readMethylationFile(SEXP filenameSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -37,7 +37,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // readMethylationFiles
-List readMethylationFiles(CharacterVector filenames);
+RcppExport List readMethylationFiles(CharacterVector filenames);
 RcppExport SEXP _MAPitNorm_readMethylationFiles(SEXP filenamesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -48,12 +48,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // testCpp
-void testCpp();
+RcppExport void testCpp();
 RcppExport SEXP _MAPitNorm_testCpp() {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    testCpp();
-    return R_NilValue;
+    rcpp_result_gen = Rcpp::wrap(testCpp());
+    return rcpp_result_gen;
 END_RCPP
 }
 
