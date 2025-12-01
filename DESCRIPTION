@@ -11,18 +11,26 @@ Depends:
     parallel,
 Imports: 
     data.table,
+    GenomicRanges,
+    GenomeInfoDb,
     ggplot2,
     grDevices,
     grid,
+    IRanges,
     methods,
     patchwork,
     progress,
     purrr,
     Rcpp,
     reshape2,
+    rtracklayer,
     stats,
     utils
 Suggests:
+    BSgenome.Hsapiens.UCSC.hg38,
+    BSgenome.Hsapiens.UCSC.hg19,
+    BSgenome.Mmusculus.UCSC.mm10,
+    BSgenome.Mmusculus.UCSC.mm39,
     cowplot,
     stringr,
     tools
