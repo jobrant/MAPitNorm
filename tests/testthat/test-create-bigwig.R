@@ -1,7 +1,13 @@
 # Load all samples using C++ implementation (default)
+# On HiPerGator
+#all_samples <- load_data(
+#  dir_path = "/blue/cancercenter-dept/shared/MAPitNorm/allc_files/",
+#  sample_sheet = "/blue/cancercenter-dept/shared/MAPitNorm/M-Series_batches.csv"
+#)
+
 all_samples <- load_data(
-  dir_path = "/blue/cancercenter-dept/shared/MAPitNorm/allc_files/",
-  sample_sheet = "/blue/cancercenter-dept/shared/MAPitNorm/M-Series_batches.csv"
+  dir_path = "tests/testthat/test-data/",
+  sample_sheet = "tests/testthat/test-data/M-Series_batches.csv"
 )
 
 # Test the Function
@@ -19,7 +25,7 @@ attr(test_samples, "sample_metadata") <- attr(all_samples, "sample_metadata")
 # Test 1: Single sample export
 export_to_bigwig(
   data = test_samples,
-  output_dir = ".",
+  output_dir = "tests/testthat/test-results/",
   genome = "hg38",
   sample_name = "allc_M1N2"
 )
@@ -27,7 +33,7 @@ export_to_bigwig(
 # Test 2: Aggregate replicates (all M1 samples)
 export_to_bigwig(
   data = test_samples,
-  output_dir = ".",
+  output_dir = "tests/testthat/test-results/",
   genome = "hg38",
   aggregate_replicates = TRUE,
   group_id = "M1"
@@ -38,7 +44,7 @@ metadata <- attr(test_samples, "sample_metadata")
 for (group in unique(metadata$group_id)) {
   export_to_bigwig(
     data = test_samples,
-    output_dir = ".",
+    output_dir = "tests/testthat/test-results/",
     genome = "hg38",
     aggregate_replicates = TRUE,
     group_id = group
@@ -47,10 +53,12 @@ for (group in unique(metadata$group_id)) {
 
 # Checks
 # Load it back into R
-bw <- import.bw("allc_M1N2.bw")
+bw <- import.bw("tests/testthat/test-results/allc_M1N2.bw")
 head(bw)
 
 # View first few positions from original data
+test_data <- copy(all_samples$allc_M1N2[chr == "1" & pos < 1000000])
+
 test_data[12:20]
 
 # Example: position chr1:67231 has rate=0.3333333
@@ -61,7 +69,7 @@ bw[seqnames(bw) == "chr1" & start(bw) == 67231]  # positions from the data
 
 # Test aggregation math
 # Load aggregated BigWig
-bw_agg <- import.bw("M1_aggregated.bw")
+bw_agg <- import.bw("tests/testthat/test-results/M1_aggregated.bw")
 
 # Pick a position to check - chr1:69426
 test_pos <- 69426
