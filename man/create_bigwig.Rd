@@ -11,6 +11,7 @@ create_bigwig(
   group_name = NULL,
   sample_name = NULL,
   genome = "hg38",
+  chrom_sizes_file = NULL,
   aggregate_replicates = FALSE,
   min_coverage = 1
 )
@@ -29,6 +30,9 @@ Should be one of "cov" or "meth" (for coverage score or methylation rate score, 
 \item{sample_name}{Sample ID to export (for single sample export)}
 
 \item{genome}{Genome build. One of "hg38", "hg19", "mm10", "mm39". Default is "hg38"}
+
+\item{chrom_sizes_file}{Path to custom chromosome sizes file (tab-separated: chr, length).
+If provided, overrides the genome parameter.}
 
 \item{aggregate_replicates}{Logical. If TRUE, aggregates replicates within a group.
 Default is FALSE}
