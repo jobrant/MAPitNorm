@@ -59,9 +59,8 @@ export_to_bigwig <- function(
     sample_name = NULL,
     aggregate_replicates = FALSE,
     group_id = NULL,
-    min_coverage = 1,
-    split_strand = FALSE
-) {
+    min_coverage = 1)
+  {
   # Only check for the genome-specific package (in Suggests)
   genome_pkg <- switch(genome,
                        "hg38" = "BSgenome.Hsapiens.UCSC.hg38",
@@ -112,7 +111,7 @@ export_to_bigwig <- function(
     sample_data <- sample_data[cov >= min_coverage]
 
     # Export function
-    export_strand <- function(dt, strand_label = "") {
+    export <- function(dt, strand_label = "") {
       gr <- GRanges(
         seqnames = dt$chr,
         ranges = IRanges(start = dt$pos, width = 1),
@@ -132,12 +131,7 @@ export_to_bigwig <- function(
     }
 
     # Export
-    if (split_strand) {
-      plus <- export_strand(sample_data[strand == "+"], "_plus")
-      minus <- export_strand(sample_data[strand == "-"], "_minus")
-      return(c(plus, minus))
-    } else {
-      return(export_strand(sample_data))
-    }
+      return(export(sample_data))
+
   }
 
