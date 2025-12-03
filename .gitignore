@@ -6,5 +6,5 @@ dev/
 src/*.o
 src/*.dll
 MAPitNorm.Rproj
-hrk-test.R
 *bw
+test-data/
