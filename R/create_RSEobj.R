@@ -21,6 +21,7 @@
 #' @import SummarizedExperiment
 #' @import GenomicRanges
 #' @import data.table
+#' @importFrom S4Vectors SimpleList
 #' @importFrom stringr str_split
 #' @importFrom methods new
 #' @export
@@ -111,7 +112,7 @@ create_RSE <- function(lol, exp_metadata = list()) {
 
 
   rse <- SummarizedExperiment::SummarizedExperiment(
-    assays    = SummarizedExperiment::SimpleList(
+    assays    = SimpleList(
       coverage = cov_matrix,
       rate     = rate_matrix
     ),
