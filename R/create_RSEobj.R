@@ -6,13 +6,15 @@
 #'
 #' @param lol A **doubly-nested named list**.
 #' \itemize{
-#'   \item \bold{Tier 1 (Names):} Sample identifiers (e.g., "Sample1", "Sample2").
-#'   \item \bold{Tier 2 (Names):} Replicate identifiers (e.g., "Rep1", "Rep2").
+#'   \item \bold{Tier 1 (Names):} Group identifiers (e.g., "Group1", "Group2").
+#'   \item \bold{Tier 2 (Names):} Sample identifiers (e.g., "Rep1", "Rep2").
 #'   \item \bold{Elements:} Data frames or data.tables containing at least
 #'   \code{chr, pos, strand, site, uniqueID, cov}, and \code{rate}.
 #' }
+#' @param groups Groups to include in the summarized experiment object. If not specified, all groups are retained.
 #' @param exp_metadata Any additional list containing experiment-level metadata to be stored in the
 #' \code{metadata} slot of the SummarizedExperiment.
+#' @param verbose Logical. If TRUE (default), prints progress messages during processing.
 #'
 #' @return A \code{RangedSummarizedExperiment} object with two assays: \code{coverage}
 #' and \code{rate}. Site-level genomic metadata is preserved in the
@@ -24,19 +26,40 @@
 #' @importFrom S4Vectors SimpleList
 #' @importFrom stringr str_split
 #' @importFrom methods new
+#' @importFrom IRanges IRanges
 #' @export
-create_RSE <- function(lol, exp_metadata = list()) {
+create_RSE <- function(lol, groups = NULL, exp_metadata = list(), verbose = TRUE) {
+
+  # Validate input list of list structure, all elements should be named
+  if (!is.list(lol) || is.null(names(lol))) {
+    stop("Input 'lol' must be a named list.")
+  }
+  if (!all(sapply(lol, function(x) is.list(x) && !is.null(names(x))))) {
+    stop("All elements in 'lol' must be named lists.")
+  }
+
+  # --- PART 0: Subset the list to extract the groups specified
+  if(!is.null(groups)){
+    if (verbose) message("Subsetting groups...")
+    lol <- lol[groups]
+  }
 
   # --- PART 1: Metadata Extraction ---
-  # We use the first replicate of the first sample to define our genomic 'spine'
+  # We use the first sample of the first Group to define our genomic 'spine'
   key_cols <- c("chr", "pos", "strand", "site", "uniqueID")
 
-  message("Step 1: Extracting master metadata and rowRanges...")
+  if (verbose) message("Extracting master metadata and rowRanges...")
   first_s <- names(lol)[1]
   if (is.null(first_s)) stop("Input list 'lol' must be named.")
 
   first_r <- names(lol[[first_s]])[1]
-  if (is.null(first_r)) stop("Replicate lists must be named.")
+  if (is.null(first_r)) stop("Sample lists must be named.")
+
+  required_cols <- c("chr", "pos", "strand", "site", "uniqueID", "cov", "rate")
+  first_df <- lol[[first_s]][[first_r]]
+  if (!all(required_cols %in% names(first_df))) {
+    stop("Missing required columns: ", paste(setdiff(required_cols, names(first_df)), collapse = ", "))
+  }
 
   # Extract unique genomic sites
   meta <- as.data.table(lol[[first_s]][[first_r]])[, ..key_cols]
@@ -52,9 +75,9 @@ create_RSE <- function(lol, exp_metadata = list()) {
   )
 
   # --- PART 2: Flattening and Matrix Pre-allocation ---
-  message("Step 2: Flattening structure and pre-allocating matrices...")
+  if (verbose) message("Flattening structure and pre-allocating matrices...")
 
-  # Flatten nested list: names usually become "Sample.Replicate"
+  # Flatten nested list: names usually become "Group.Sample"
   flat_reps <- unlist(lol, recursive = FALSE)
   rep_names <- names(flat_reps)
 
@@ -66,14 +89,14 @@ create_RSE <- function(lol, exp_metadata = list()) {
   rate_matrix <- matrix(NA_real_, nrow = num_rows, ncol = num_reps)
 
   # --- PART 3: Alignment Loop ---
-  message("Step 3: Aligning replicates to the column metadata...")
+  if (verbose) message("Aligning samples to the column metadata...")
 
   # Store names to avoid index out of bounds when we NULL-out elements
   iteration_names <- names(flat_reps)
 
   for (i in seq_along(iteration_names)) {
     curr_rep_name <- iteration_names[i]
-    message(paste("   -> Processing:", curr_rep_name))
+    if (verbose) message("   -> Processing: ", curr_rep_name)
 
     dt <- as.data.table(flat_reps[[curr_rep_name]])
     setkey(dt, uniqueID)
@@ -89,25 +112,25 @@ create_RSE <- function(lol, exp_metadata = list()) {
   }
 
   # --- PART 4: Column Metadata ---
-  message("Step 4: Building colData...")
+  if (verbose) message("Building colData...")
 
-  # Standardize naming convention (Sample_Replicate)
+  # Standardize naming convention (Group_Sample)
   clean_names <- gsub("\\.", "_", rep_names)
   colnames(cov_matrix) <- colnames(rate_matrix) <- clean_names
   rownames(cov_matrix) <- rownames(rate_matrix) <- meta$uniqueID
 
-  # Split names into Sample and Replicate factors
+  # Split names into Group and Sample factors
   name_split <- stringr::str_split(clean_names, pattern = "_", n = 2, simplify = TRUE)
 
   col_metadata <- data.frame(
-    sample      = as.factor(name_split[, 1]),
-    replicateID = name_split[, 2],
+    group      = as.factor(name_split[, 1]),
+    sample = name_split[, 2],
     row.names   = clean_names,
     stringsAsFactors = FALSE
   )
 
   # --- PART 5: Assembly ---
-  message("Step 5: Assembling RangedSummarizedExperiment...")
+  if (verbose) message("Assembling RangedSummarizedExperiment...")
 
 
 
@@ -120,10 +143,6 @@ create_RSE <- function(lol, exp_metadata = list()) {
     colData   = col_metadata,
     metadata  = list(experiment = exp_metadata)
   )
-
-  # Final cleanup
-  rm(flat_reps)
-  gc()
 
   return(rse)
 }
