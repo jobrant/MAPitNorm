@@ -6,3 +6,5 @@ dev/
 src/*.o
 src/*.dll
 MAPitNorm.Rproj
+*bw
+test-data/
