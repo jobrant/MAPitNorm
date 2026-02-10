@@ -6,7 +6,7 @@
 #' @param data_list List of methylation data by group
 #' @param group_names Optional character vector of group names. If NULL (default),
 #'   will be extracted from the metadata attached to data_list.
-#' @param normalize_coverage Logical, whether to perform coverage normalization
+#' @param do_coverage_norm Logical, whether to perform coverage normalization
 #' @param normalize_rates Logical, whether to perform rate normalization
 #' @param coverage_between_groups Logical, normalize coverage between groups
 #' @param rate_within_groups Logical, normalize rates within groups
@@ -55,7 +55,7 @@
 #'
 normalize_methylation_data <- function(data_list,
                                        group_names = NULL,
-                                       normalize_coverage = TRUE,
+                                       do_coverage_norm = TRUE,
                                        normalize_rates = TRUE,
                                        coverage_between_groups = FALSE,
                                        rate_within_groups = TRUE,
@@ -103,7 +103,7 @@ normalize_methylation_data <- function(data_list,
   }
 
   # Step 1: Coverage normalization
-  if (normalize_coverage) {
+  if (do_coverage_norm) {
     data_list <- normalize_coverage(data_list,
                                     group_names = group_names,
                                     between_groups = coverage_between_groups,
