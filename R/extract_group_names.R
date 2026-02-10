@@ -1,6 +1,3 @@
-## To Do: Use this function and usage snippet to reduce redundancies in loading functions ###
-
-
 #' Extract group names from data
 #' @param data_list A list of methylation data
 #' @param diagnostics Whether to print diagnostic messages
@@ -26,16 +23,4 @@ extract_group_names <- function(data_list, diagnostics = FALSE) {
     stop("Unable to extract group names from data")
   }
   return(group_names)
-}
-
-
-## To use add this bit to appropriate functions
-normalize_coverage <- function(data_list, group_names = NULL, between_groups = FALSE,
-                               diagnostics = FALSE) {
-  # Extract group names if not provided
-  if (is.null(group_names)) {
-    group_names <- extract_group_names(data_list, diagnostics)
-  }
-
-  # Rest of function...
 }
