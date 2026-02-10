@@ -24,15 +24,13 @@ Imports:
     Rcpp,
     reshape2,
     rtracklayer,
+    S4Vectors,
     stats,
+    stringr,
+    SummarizedExperiment,
     utils
 Suggests:
-    BSgenome.Hsapiens.UCSC.hg38,
-    BSgenome.Hsapiens.UCSC.hg19,
-    BSgenome.Mmusculus.UCSC.mm10,
-    BSgenome.Mmusculus.UCSC.mm39,
     cowplot,
-    stringr,
     tools
 Encoding: UTF-8
 LazyData: true
