@@ -67,27 +67,7 @@ normalize_methylation_data <- function(data_list,
                                        sites_per_quantile = 1000,
                                        diagnostics = FALSE) {
 
-  # Extract group names from metadata if not provided
-  if (is.null(group_names)) {
-    # Check for metadata attribute
-    if (is.list(data_list) && !is.null(attr(data_list, "sample_metadata"))) {
-      sample_metadata <- attr(data_list, "sample_metadata")
-      group_names <- unique(sample_metadata$group_id)
-      if (diagnostics) {
-        message("Using group names extracted from metadata: ",
-                paste(group_names, collapse = ", "))
-      }
-    } else if (is.list(data_list) && all(names(data_list) != "")) {
-      # If no metadata but data_list has names, use those as group names
-      group_names <- names(data_list)
-      if (diagnostics) {
-        message("Using list names as group names: ",
-                paste(group_names, collapse = ", "))
-      }
-    } else {
-      stop("No group_names provided and unable to extract from metadata")
-    }
-  }
+  group_names <- extract_group_names(data_list, diagnostics)
 
   # Step 0: Filter by minimum coverage if specified
   if (min_coverage > 0) {
