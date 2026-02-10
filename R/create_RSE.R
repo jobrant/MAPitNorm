@@ -20,13 +20,6 @@
 #' and \code{rate}. Site-level genomic metadata is preserved in the
 #' \code{rowRanges} slot as a \code{GRanges} object.
 #'
-#' @import SummarizedExperiment
-#' @import GenomicRanges
-#' @import data.table
-#' @importFrom S4Vectors SimpleList
-#' @importFrom stringr str_split
-#' @importFrom methods new
-#' @importFrom IRanges IRanges
 #' @export
 create_RSE <- function(lol, groups = NULL, exp_metadata = list(), verbose = TRUE) {
 

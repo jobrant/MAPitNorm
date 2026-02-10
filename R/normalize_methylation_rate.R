@@ -24,11 +24,6 @@
 #'
 #' @return List of lists containing normalized methylation data
 #'
-#' @importFrom data.table setDT copy :=
-#' @importFrom stats quantile
-#' @importFrom purrr map2
-#' @importFrom utils setTxtProgressBar txtProgressBar
-#'
 #' @export
 normalize_methylation_rates <- function(data_list,
                                         group_names = NULL,

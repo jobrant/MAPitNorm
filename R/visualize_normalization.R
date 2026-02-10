@@ -17,10 +17,6 @@
 #'   \item{data}{Sampled data used for plotting}
 #'   \item{report_files}{List of paths to individual plot reports}
 #' @export
-#' @importFrom ggplot2 theme_minimal
-#' @importFrom grDevices pdf dev.off
-#' @importFrom grid grid.newpage grid.text gpar
-#' @importFrom patchwork wrap_plots
 visualize_normalization <- function(data_list,
                                     stages = names(data_list),
                                     plots = c("density", "qq"),

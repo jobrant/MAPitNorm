@@ -74,10 +74,6 @@
 #' @seealso \code{\link{create_bedgraph}} for bedGraph export,
 #'   \code{\link{load_data}} for loading methylation data.
 #'
-#' @importFrom GenomeInfoDb Seqinfo seqinfo seqinfo<- seqlevels keepSeqlevels
-#' @importFrom GenomicRanges GRanges
-#' @importFrom IRanges IRanges
-#' @importFrom data.table rbindlist copy fread as.data.table :=
 #' @export
 create_bigwig <- function(
     meth_data,

@@ -11,10 +11,6 @@
 #'
 #' @return A doubly-nested named list of \code{data.table} objects.
 #'
-#' @import SummarizedExperiment
-#' @import GenomicRanges
-#' @import data.table
-#' @importFrom stringr str_split
 #' @export
 
 convertSE_to_list <- function(rse, groups = NULL, verbose = TRUE) {

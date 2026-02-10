@@ -24,10 +24,6 @@
 #' split_data <- split_by_groups(gch_samples, group_names)
 #' normalized_coverage <- normalize_coverage(split_data, group_names)
 #' }
-#' @importFrom data.table setDT copy := setDTthreads
-#' @importFrom purrr map2 transpose
-#' @importFrom parallel detectCores
-#' @importFrom utils head
 #'
 #' @export
 

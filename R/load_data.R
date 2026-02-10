@@ -18,9 +18,6 @@
 #' @return A list of data.tables containing processed methylation data, or a
 #'    single data.table if single_file is provided.
 #'
-#' @importFrom data.table fread setnames := is.data.table as.data.table rbindlist
-#' @importFrom methods is
-#' @importFrom Rcpp evalCpp
 #' @export
 #' @useDynLib MAPitNorm, .registration = TRUE
 load_data <- function(dir_path, sample_sheet, type = NULL, groups = NULL,
