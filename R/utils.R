@@ -574,36 +574,3 @@ process_all_samples <- function(data_list, type, out,
 
   return(unlist(out_files))
 }
-
-
-#' Reads single methylation data file
-#' @param file_path Path to methylation file
-#'
-#' @return data.table containing methylation data
-#'
-#' @importFrom progress progress_bar
-#' @importFrom data.table fread setnames :=
-#'
-#' @keywords internal
-read_methylation_file <- function(file_path) {
-  warning("read_methylation_file is deprecated; use load_data(single_file = file_path) instead.")
-  cols_needed <- c("chr", "pos", "strand", "site", "mc", "cov")
-  pb <- progress::progress_bar$new(
-    format = "  Loading [:bar] :percent in :elapsed",
-    total = length(1),
-    clear = FALSE
-  )
-  pb$tick()
-  df <- data.table::fread(
-    file_path,
-    select = 1:6,
-    showProgress = FALSE
-  )
-  data.table::setnames(df, cols_needed)
-  df[, ":="(
-    rate = mc/cov,
-    uniqueID = paste(chr, pos, site, sep="_")
-  )]
-  return(df)
-}
-
