@@ -5,7 +5,8 @@
 #' genomic coordinates and assay data, then reconstructs a hierarchical list
 #' based on the groups provided in the \code{Group_SampleName} format.
 #'
-#' @param se A \code{SummarizedExperiment} object.
+#' @param rse A \code{SummarizedExperiment} or \code{RangedSummarizedExperiment} object.
+#' @param verbose Logical. If \code{TRUE} (default), prints progress messages.
 #' @param groups Character vector. The names of specific groups to extract.
 #' If \code{NULL} (default), all samples are extracted.
 #'
