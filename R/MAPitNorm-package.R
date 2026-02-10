@@ -4,7 +4,8 @@
 ## Shared imports used across the package
 #' @importFrom data.table data.table as.data.table is.data.table fread
 #'   fwrite setnames setDT setkey setkeyv haskey copy rbindlist := setDTthreads
-#' @importFrom stats median quantile aggregate na.omit
+#' @importFrom stats median quantile aggregate na.omit prcomp, cmdscale, dist, 
+#' var, complete.cases
 #' @importFrom utils head setTxtProgressBar txtProgressBar combn 
 #' @importFrom methods is new
 #' @importFrom GenomicRanges GRanges
