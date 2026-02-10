@@ -7,7 +7,7 @@
 normalize_methylation_data(
   data_list,
   group_names = NULL,
-  normalize_coverage = TRUE,
+  do_coverage_norm = TRUE,
   normalize_rates = TRUE,
   coverage_between_groups = FALSE,
   rate_within_groups = TRUE,
@@ -26,7 +26,7 @@ normalize_methylation_data(
 \item{group_names}{Optional character vector of group names. If NULL (default),
 will be extracted from the metadata attached to data_list.}
 
-\item{normalize_coverage}{Logical, whether to perform coverage normalization}
+\item{do_coverage_norm}{Logical, whether to perform coverage normalization}
 
 \item{normalize_rates}{Logical, whether to perform rate normalization}
 

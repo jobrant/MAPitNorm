@@ -11,33 +11,60 @@ visualize_normalization(
   sample_size = 1e+05,
   output_file = NULL,
   output_dir = NULL,
-  theme = theme_minimal()
+  theme = ggplot2::theme_minimal()
 )
 }
 \arguments{
-\item{data_list}{List containing methylation data at different normalization stages}
+\item{data_list}{Named list where each element contains methylation data
+at a different normalization stage (e.g.,
+\code{list(raw = raw_data, normalized = norm_data)}).}
 
-\item{stages}{Character vector of stage names corresponding to data_list elements}
+\item{stages}{Character vector of stage names corresponding to
+\code{data_list} elements. Default uses \code{names(data_list)}.}
 
-\item{plots}{Character vector of plot types to include}
+\item{plots}{Character vector of plot types to include. Options are
+\code{"density"}, \code{"qq"}, \code{"ma"}, and \code{"pca"}.
+Default is \code{c("density", "qq")}.}
 
-\item{sample_size}{Number of sites to randomly sample for visualization (NULL for all)}
+\item{sample_size}{Number of sites to randomly sample for visualization.
+Default is 100000. Use \code{NULL} for all sites.}
 
-\item{output_file}{Optional file path to save visualization report}
+\item{output_file}{File path to save the combined PDF report.
+If \code{NULL}, no file is saved.}
 
-\item{output_dir}{Directory to save additional plot reports (default is same as output_file).}
+\item{output_dir}{Directory for individual plot reports.
+Defaults to the directory of \code{output_file}, or the working
+directory if \code{output_file} is also \code{NULL}.}
 
-\item{theme}{ggplot2 theme to use apply (defaults to theme_minimual()).}
+\item{theme}{ggplot2 theme to apply. Default is
+\code{\link[ggplot2]{theme_minimal}}.}
 }
 \value{
 A list containing:
-\item{plots}{List of ggplot objects}
-\item{combined}{Combined plot (if output_file specified)}
-\item{data}{Sampled data used for plotting}
-\item{report_files}{List of paths to individual plot reports}
+\item{plots}{Named list of ggplot objects}
+\item{combined}{Combined patchwork plot (if output_file specified)}
+\item{report_files}{Named list of paths to individual PDF reports}
 }
 \description{
-Generates visualization reports to compare methylation data across normalization stages.
-Supports density, QQ, MA, boxplot, and correlation plots, with individual reports per
-plot type and a combined report for multiple plot types.
+Generates a multi-page PDF report comparing methylation data across
+normalization stages. This is a convenience wrapper around the
+individual plot functions (\code{\link{plot_density}},
+\code{\link{plot_qq}}, \code{\link{plot_ma}}, \code{\link{plot_pca}}).
+}
+\examples{
+\dontrun{
+report <- visualize_normalization(
+  data_list = list(
+    "Before" = split_data,
+    "After"  = normalized_data
+  ),
+  plots = c("density", "ma", "pca"),
+  output_file = "normalization_report.pdf"
+)
+}
+
+}
+\seealso{
+\code{\link{plot_density}}, \code{\link{plot_qq}},
+\code{\link{plot_ma}}, \code{\link{plot_pca}}
 }

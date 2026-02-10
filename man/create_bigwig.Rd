@@ -5,7 +5,7 @@
 \title{Export Methylation Data to BigWig Format}
 \usage{
 create_bigwig(
-  data,
+  meth_data,
   type = c("meth", "cov"),
   out,
   group_name = NULL,
@@ -13,43 +13,65 @@ create_bigwig(
   genome = "hg38",
   chrom_sizes_file = NULL,
   aggregate_replicates = FALSE,
-  min_coverage = 1
+  min_coverage = 1,
+  split_strand = FALSE
 )
 }
 \arguments{
-\item{data}{List object returned by \code{\link{load_data}} containing
-methylation data with sample_metadata attribute}
+\item{meth_data}{List object returned by \code{\link{load_data}} containing
+methylation data with a \code{sample_metadata} attribute.}
 
-\item{type}{Character string for type of value to include as score in bigwig.
-Should be one of "cov" or "meth" (for coverage score or methylation rate score, respectively.)}
+\item{type}{Character string specifying the score to write.
+One of \code{"meth"} (methylation rate) or \code{"cov"} (coverage).}
 
-\item{out}{Directory path for output BigWig files}
+\item{out}{Directory path for output BigWig files. Created if it does not exist.}
 
-\item{group_name}{Group ID to aggregate (required if aggregate_replicates = TRUE)}
+\item{group_name}{Group ID to aggregate (required if
+\code{aggregate_replicates = TRUE}).}
 
-\item{sample_name}{Sample ID to export (for single sample export)}
+\item{sample_name}{Sample ID to export (required if
+\code{aggregate_replicates = FALSE}).}
 
-\item{genome}{Genome build. One of "hg38", "hg19", "mm10", "mm39". Default is "hg38"}
+\item{genome}{Genome build. One of \code{"hg38"}, \code{"hg19"},
+\code{"mm10"}, \code{"mm39"}. Default is \code{"hg38"}.
+Ignored when \code{chrom_sizes_file} is provided.}
 
-\item{chrom_sizes_file}{Path to custom chromosome sizes file (tab-separated: chr, length).
-If provided, overrides the genome parameter.}
+\item{chrom_sizes_file}{Path to a custom chromosome sizes file
+(tab-separated: chr, length). If provided, overrides \code{genome}.}
 
-\item{aggregate_replicates}{Logical. If TRUE, aggregates replicates within a group.
-Default is FALSE}
+\item{aggregate_replicates}{Logical. If \code{TRUE}, aggregates replicates
+within a group using coverage-weighted mean rates. Default is \code{FALSE}.}
 
-\item{min_coverage}{Minimum coverage threshold for including sites. Default is 1}
+\item{min_coverage}{Minimum coverage threshold for including sites.
+Default is 1.}
+
+\item{split_strand}{Logical. If \code{TRUE}, creates separate BigWig files
+for forward and reverse strands. If \code{FALSE} (default), all data is
+exported as unstranded.}
 }
 \value{
-Character vector of created file path(s)
+Character vector of created BigWig file path(s). If
+\code{split_strand = TRUE}, returns paths for both strand files.
 }
 \description{
-Exports single-base resolution methylation rate data to BigWig format for
+Exports single-base resolution methylation data to BigWig format for
 genome browser visualization. Can export individual samples or aggregate
-replicates by group.
+replicates by group. Since BigWig format does not support strand, data
+is exported as unstranded by default, or optionally split into separate
+forward and reverse strand files.
 }
 \details{
-For aggregated replicates, methylation rates are calculated as a coverage-weighted
-mean: sum(methylated_counts) / sum(total_coverage) across all replicates in the group.
+BigWig format does not natively support strand information. When
+\code{split_strand = FALSE} (default), all sites are exported in a single
+unstranded file. When \code{split_strand = TRUE}, two files are created
+with \code{_fwd} and \code{_rev} suffixes.
+
+For aggregated replicates, methylation rates are calculated as a
+coverage-weighted mean: \code{sum(mc) / sum(cov)} across all replicates
+in the group.
+
+This function requires the \pkg{rtracklayer} package. Install it from
+Bioconductor with \code{BiocManager::install("rtracklayer")} if needed.
 }
 \examples{
 \dontrun{
@@ -59,22 +81,27 @@ all_samples <- load_data(
   sample_sheet = "samples.csv"
 )
 
-# Export single sample
+# Export single sample methylation rates
 create_bigwig(
-  data = all_samples,
+  meth_data = all_samples,
   out = "bigwigs",
   sample_name = "allc_M1N2",
   type = "meth"
 )
 
-# Export aggregated replicates
+# Export aggregated replicates, split by strand
 create_bigwig(
-  data = all_samples,
+  meth_data = all_samples,
   out = "bigwigs",
   aggregate_replicates = TRUE,
   group_name = "M1",
-  type = "rate"
+  type = "meth",
+  split_strand = TRUE
 )
 }
 
+}
+\seealso{
+\code{\link{create_bedgraph}} for bedGraph export,
+\code{\link{load_data}} for loading methylation data.
 }

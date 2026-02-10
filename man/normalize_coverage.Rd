@@ -44,4 +44,5 @@ which might mask global accessibility changes between conditions.
 split_data <- split_by_groups(gch_samples, group_names)
 normalized_coverage <- normalize_coverage(split_data, group_names)
 }
+
 }
